@@ -1,0 +1,173 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Valkey (Drop-in replacement for Redis - Open Source BSD-3)
+  # ---------------------------------------------------------------------------
+  valkey:
+    image: valkey/valkey:9-alpine
+    container_name: aml-valkey
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL (Primary DB for Outbox & States)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:18-alpine
+    container_name: aml-postgres
+    environment:
+      POSTGRES_DB: aml_db
+      POSTGRES_USER: aml_user
+      POSTGRES_PASSWORD: aml_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U aml_user -d aml_db" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+
+  # ---------------------------------------------------------------------------
+  # Apache Cassandra (NoSQL for Transaction History / Audit Log)
+  # ---------------------------------------------------------------------------
+  cassandra:
+    image: cassandra:6.0
+    container_name: aml-cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=AMLCluster
+      - CASSANDRA_DC=datacenter1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - MAX_HEAP_SIZE=1G
+      - HEAP_NEWSIZE=256M
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    networks:
+      aml-net:
+        ipv4_address: 172.18.0.10
+    healthcheck:
+      test: [ "CMD-SHELL", "cqlsh -e 'describe cluster' || exit 1" ]
+      start_period: 30s
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  cassandra-init:
+    image: cassandra:6.0
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        echo "Searching for CQL scripts..."
+        for f in /opt/init-scripts/*.cql; do
+          if [ -f "$$f" ]; then
+            echo "Executing $$f..."
+            cqlsh aml-cassandra -f "$$f"
+          fi
+        done
+        echo "Initialization finished."
+    volumes:
+      - ./src/main/resources/cassandra/init-scripts:/opt/init-scripts:ro
+    networks:
+      - aml-net
+    restart: "no"
+  # ---------------------------------------------------------------------------
+  # Apache Kafka (KRaft Mode - No Zookeeper needed)
+  # ---------------------------------------------------------------------------
+  kafka:
+    image: apache/kafka:4.3.1
+    container_name: aml-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    healthcheck:
+#      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
+#      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server kafka:9092 || exit 1"]
+      test: [ "CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "kafka:9092" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # Kafka UI for visual monitoring
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: aml-kafka-ui
+    ports:
+      - "8085:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # LocalStack (AWS S3 Emulator for Sanction Lists)
+  # ---------------------------------------------------------------------------
+  localstack:
+    image: localstack/localstack:s3-community-archive
+    container_name: aml-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEFAULT_REGION=eu-central-1
+      - AWS_DEFAULT_REGION=eu-central-1
+
+  # ---------------------------------------------------------------------------
+  # Prometheus & Grafana (Observability & SLA Tracking)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3
+    container_name: aml-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:13.2-slim
+    container_name: aml-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
+
+volumes:
+  postgres_data:
+  cassandra_data:
+
+networks:
+  aml-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16

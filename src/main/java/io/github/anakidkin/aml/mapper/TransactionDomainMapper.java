@@ -1,0 +1,42 @@
+package io.github.anakidkin.aml.mapper;
+
+import io.github.anakidkin.aml.domain.RuleResult;
+import io.github.anakidkin.aml.domain.Transaction;
+import io.github.anakidkin.aml.dto.InboundTransactionEvent;
+import io.github.anakidkin.aml.dto.TransactionEvaluatedEvent;
+import io.github.anakidkin.aml.entity.TransactionEntity;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants;
+import org.mapstruct.ReportingPolicy;
+
+import java.util.List;
+
+@Mapper(
+    componentModel = MappingConstants.ComponentModel.SPRING,
+    unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
+public interface TransactionDomainMapper {
+
+  // Domain -> JPA Entity
+  @Mapping(target = "amount", source = "money.amount")
+  @Mapping(target = "currency", source = "money.currency")
+  @Mapping(target = "riskLevel", source = "riskAssessment.level")
+  @Mapping(target = "riskScore", source = "riskAssessment.score")
+  TransactionEntity toEntity(Transaction transaction);
+
+  @Mapping(target = "id", source = "transactionId")
+  @Mapping(target = "money.amount", source = "amount")
+  @Mapping(target = "money.currency", source = "currency")
+  @Mapping(target = "createdAt", source = "timestamp")
+  @Mapping(target = "status", ignore = true)
+  @Mapping(target = "riskAssessment", ignore = true)
+  Transaction toDomain(InboundTransactionEvent event);
+
+  @Mapping(target = "transactionId", source = "tx.id")
+  @Mapping(target = "amount", source = "tx.money.amount")
+  @Mapping(target = "currency", source = "tx.money.currency")
+  @Mapping(target = "evaluatedAt", expression = "java(java.time.Instant.now())")
+  TransactionEvaluatedEvent toEvaluatedEvent(Transaction tx, List<RuleResult> ruleResults);
+
+}

@@ -1,0 +1,91 @@
+# AML Service — High-Throughput Fraud & AML Detection Engine
+
+Real-time Anti-Money Laundering (AML) & Fraud Detection engine designed for high-throughput banking systems. The service
+evaluates financial transactions against customizable compliance and risk rules within strict SLA targets.
+
+---
+
+## Key Architectural Requirements & SLA
+
+* **Target Throughput:** 10,000 Transactions Per Second (TPS).
+* **Latency SLA:** `< 100 ms` End-to-End decision pipeline (Targeting ~40–60 ms p99).
+* **Audit & Regulatory Compliance:** Guaranteed immutable audit trail and historical aggregation (Transactional Outbox +
+  Apache Cassandra).
+* **Availability & Resilience:** Zero data-loss architecture (**At-Least-Once** event delivery via Outbox Pattern &
+  Kafka).
+
+---
+
+## Latency Budget Breakdown (< 100 ms)
+
+| Step                    | Operation                              | Target Latency     | Tech Stack                     |
+|-------------------------|----------------------------------------|--------------------|--------------------------------|
+| **1. Ingestion**        | REST Request ingestion & mapping       | ~5–10 ms           | Spring Web / MapStruct         |
+| **2. Context Fetch**    | Aggregation metrics lookup (24h / 30d) | ~10–15 ms          | Apache Cassandra               |
+| **3. Rule Evaluation**  | In-memory rules execution pipeline     | ~5–10 ms           | Pure Java Domain Rules         |
+| **4. Persistence**      | Transaction + Outbox Event atomic save | ~10–15 ms          | PostgreSQL (Transactional)     |
+| **5. Asynchronous Pub** | Outbox polling & Kafka verdict publish | Async (Background) | Kafka Producer / Outbox Poller |
+| **Total**               | **End-to-End Synchronous Decision**    | **~30–50 ms**      | **(Well under 100ms SLA)**     |
+
+---
+
+## Tech Stack & Infrastructure
+
+* **Java 25** + **Spring Boot 4**
+* **PostgreSQL** (Transaction storage & Transactional Outbox)
+* **Apache Cassandra** (NoSQL high-speed transaction history & aggregated account metrics)
+* **Apache Kafka (KRaft mode)** (High-throughput message streaming without ZooKeeper)
+* **Testcontainers & AssertJ** (Integration testing with real Cassandra, Postgres, and Kafka containers)
+
+---
+
+## Quick Start (Local Setup)
+
+### Prerequisites
+
+* Docker Engine 24+ & `docker compose` CLI plugin
+* Java 25+ JDK
+* Gradle 8.x (or Gradle Wrapper included)
+
+### 1. Start Infrastructure Dependencies
+
+```bash
+docker compose up -d
+```
+
+*This spins up PostgreSQL, Apache Cassandra, and Apache Kafka (KRaft).*
+
+### 2. Build and Run Application
+
+```bash
+./gradlew bootRun
+```
+
+### 3. Run Test Suite
+
+```bash
+./gradlew test
+./gradlew integrationTest
+./gradlew jmh
+./gradlew gatlingRun
+```
+
+### 4. Send Test Transaction for Evaluation
+
+```bash
+curl -X POST http://localhost:8080/api/v1/transactions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountFrom": "ACC-100200",
+    "accountTo": "ACC-900800",
+    "amount": 15000.00,
+    "currency": "USD",
+    "mccCode": "5411",
+    "isP2p": false
+  }'
+```
+
+## Roadmap
+
+Check [ROADMAP.md](./ROADMAP.md) for planned performance optimizations, memory profiling tasks, and infrastructure
+enhancements.
