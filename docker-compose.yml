@@ -24,6 +24,7 @@ services:
       POSTGRES_DB: aml_db
       POSTGRES_USER: aml_user
       POSTGRES_PASSWORD: aml_password
+    command: postgres -c wal_level=logical -c max_wal_senders=4 -c max_replication_slots=4
     volumes:
       - postgres_data:/var/lib/postgresql
     ports:
@@ -34,6 +35,69 @@ services:
       timeout: 3s
       retries: 5
 
+  debezium:
+    image: quay.io/debezium/connect:3.7
+    container_name: aml-debezium
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:29092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect_configs
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      STATUS_STORAGE_TOPIC: connect_statuses
+      KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Debezium Connector Automatic Initializer
+  # ---------------------------------------------------------------------------
+  debezium-init:
+    image: curlimages/curl:8.21.0
+    container_name: aml-debezium-init
+    depends_on:
+      - debezium
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for Kafka Connect to start..."
+        while [ $(curl -s -o /dev/null -w "%{http_code}" http://debezium:8083/connectors) -ne 200 ]; do
+          sleep 2
+        done
+        echo "Kafka Connect is up! Registering Outbox connector..."
+        curl -i -X POST http://debezium:8083/connectors/ \
+          -H "Content-Type: application/json" \
+          -d '{
+            "name": "aml-outbox-connector",
+            "config": {
+              "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+              "tasks.max": "1",
+              "database.hostname": "postgres",
+              "database.port": "5432",
+              "database.user": "aml_user",
+              "database.password": "aml_password",
+              "database.dbname": "aml_db",
+              "topic.prefix": "aml",
+              "table.include.list": "public.outbox_events",
+              "plugin.name": "pgoutput",
+
+              "transforms": "outbox",
+              "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+
+              "transforms.outbox.table.field.event.id": "id",
+              "transforms.outbox.table.field.event.key": "aggregate_id",
+              "transforms.outbox.table.field.event.payload": "payload",
+
+              "transforms.outbox.route.by.field": "aggregate_type",
+              "transforms.outbox.route.topic.replacement": "aml.$${routedByValue}-evaluated.v1"
+            }
+          }'
+        echo "\nConnector registration completed!"
 
   # ---------------------------------------------------------------------------
   # Apache Cassandra (NoSQL for Transaction History / Audit Log)
@@ -66,7 +130,7 @@ services:
     depends_on:
       cassandra:
         condition: service_healthy
-    entrypoint: ["sh", "-c"]
+    entrypoint: [ "sh", "-c" ]
     command:
       - |
         echo "Searching for CQL scripts..."
@@ -82,6 +146,7 @@ services:
     networks:
       - aml-net
     restart: "no"
+
   # ---------------------------------------------------------------------------
   # Apache Kafka (KRaft Mode - No Zookeeper needed)
   # ---------------------------------------------------------------------------
@@ -106,8 +171,6 @@ services:
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
     healthcheck:
-#      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
-#      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server kafka:9092 || exit 1"]
       test: [ "CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "kafka:9092" ]
       interval: 10s
       timeout: 5s

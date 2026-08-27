@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.anakidkin.aml.cache.AccountVolumeCache;
 import io.github.anakidkin.aml.domain.AccountContext;
-import io.github.anakidkin.aml.domain.OutboxStatus;
 import io.github.anakidkin.aml.domain.RiskAssessment;
 import io.github.anakidkin.aml.domain.RiskLevel;
 import io.github.anakidkin.aml.domain.RuleResult;
@@ -233,10 +232,9 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
 
       OutboxEventEntity outboxEvent = OutboxEventEntity.builder()
           .aggregateId(tx.id())
-          .aggregateType("TRANSACTION")
+          .aggregateType("transaction")
           .eventType("TRANSACTION_EVALUATED")
           .payload(payloadJson)
-          .status(OutboxStatus.PENDING)
           .build();
 
       jpaOutboxRepository.save(outboxEvent);

@@ -1,10 +1,7 @@
 package io.github.anakidkin.aml.entity;
 
-import io.github.anakidkin.aml.domain.OutboxStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -46,20 +43,8 @@ public class OutboxEventEntity {
   @JdbcTypeCode(SqlTypes.JSON)
   private String payload;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  @Builder.Default
-  private OutboxStatus status = OutboxStatus.PENDING;
-
-  @Column(name = "retry_count", nullable = false)
-  @Builder.Default
-  private Integer retryCount = 0;
-
   @Column(name = "created_at", nullable = false, updatable = false)
   @Builder.Default
   private Instant createdAt = Instant.now();
-
-  @Column(name = "processed_at")
-  private Instant processedAt;
 
 }

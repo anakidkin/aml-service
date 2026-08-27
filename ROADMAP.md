@@ -22,7 +22,7 @@ This document tracks planned technical enhancements, performance optimizations, 
 - [ ] **GC & Allocation Profiling:** Address high object allocation rates identified in JMH benchmarks.
 - [X] **Redis / Valkey Integration:** Utilize the provisioned Redis/Valkey container and dependencies to cache
   frequently accessed data.
-- [ ] Adopt Debezium CDC for Outbox Pattern
+- [X] Adopt Debezium CDC for Outbox Pattern
 
 ---
 

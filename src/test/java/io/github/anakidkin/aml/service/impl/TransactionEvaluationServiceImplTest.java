@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.anakidkin.aml.cache.AccountVolumeCache;
 import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.Money;
-import io.github.anakidkin.aml.domain.OutboxStatus;
 import io.github.anakidkin.aml.domain.RiskLevel;
 import io.github.anakidkin.aml.domain.RuleResult;
 import io.github.anakidkin.aml.domain.RuleStatus;
@@ -42,6 +41,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -87,12 +87,12 @@ class TransactionEvaluationServiceImplTest {
   private TransactionEvaluationServiceImpl evaluationService;
 
   @BeforeEach
-  void setUp() throws InterruptedException {
+  void setUp() {
     when(rule1.getPriority()).thenReturn(1);
     when(rule2.getPriority()).thenReturn(2);
 
     when(redisson.getLock(anyString())).thenReturn(lock);
-    when(lock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
+    doNothing().when(lock).lock(anyLong(), any(TimeUnit.class));
 
     evaluationService = new TransactionEvaluationServiceImpl(
         List.of(rule2, rule1),
@@ -129,7 +129,6 @@ class TransactionEvaluationServiceImplTest {
     verify(jpaTransactionRepository).save(any(TransactionEntity.class));
     verify(jpaOutboxRepository).save(outboxCaptor.capture());
 
-    assertThat(outboxCaptor.getValue().getStatus()).isEqualTo(OutboxStatus.PENDING);
     assertThat(outboxCaptor.getValue().getAggregateId()).isEqualTo(tx.id());
   }
 

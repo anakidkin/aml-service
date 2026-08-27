@@ -1,7 +1,6 @@
 package io.github.anakidkin.aml;
 
 import io.github.anakidkin.aml.domain.Money;
-import io.github.anakidkin.aml.domain.OutboxStatus;
 import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.domain.TransactionStatus;
 import lombok.extern.slf4j.Slf4j;
@@ -45,21 +44,17 @@ class OutboxKafkaCassandraIntegrationTest extends AbstractIntegrationTest {
     );
 
     transactionEvaluationService.evaluate(tx);
-    assertThat(jpaOutboxRepository.findAll())
-        .extracting("aggregateId")
-        .contains(txId);
+
+    var outboxEvent = jpaOutboxRepository.findAll().stream()
+        .filter(e -> e.getAggregateId().equals(txId))
+        .findFirst();
+    assertThat(outboxEvent).isPresent();
+    assertThat(outboxEvent.get().getAggregateType()).isEqualTo("transaction");
 
     await()
         .atMost(Duration.ofSeconds(10))
         .pollInterval(Duration.ofMillis(300))
         .untilAsserted(() -> {
-          var outboxEvents = jpaOutboxRepository.findAll();
-          assertThat(outboxEvents)
-              .filteredOn(event -> event.getAggregateId().equals(txId))
-              .singleElement()
-              .extracting("status")
-              .isEqualTo(OutboxStatus.PUBLISHED);
-
           var auditRow = cqlSession.execute(
               "SELECT transaction_id FROM aml_audit.audit_logs WHERE transaction_id = ?",
               txId

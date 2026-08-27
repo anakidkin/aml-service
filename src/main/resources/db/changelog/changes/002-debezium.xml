@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="simplify-outbox-events-for-debezium" author="anakidkin">
+        <dropColumn tableName="outbox_events" columnName="status"/>
+        <dropColumn tableName="outbox_events" columnName="retry_count"/>
+        <dropColumn tableName="outbox_events" columnName="processed_at"/>
+
+        <createIndex tableName="outbox_events" indexName="idx_outbox_events_created_at">
+            <column name="created_at"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
