@@ -6,12 +6,14 @@ import io.github.anakidkin.aml.domain.RuleResult;
 import io.github.anakidkin.aml.domain.RuleStatus;
 import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.rules.AmlRule;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * AML rule that validates transaction volume against maximum allowed daily cumulative limits.
  * Triggers a flag if the combined sum of previous 24-hour transfers and the current transaction
  * exceeds the permitted threshold, mitigating rapid capital flight or large-scale structuring.
  */
+@Slf4j
 public class DailyVolumeLimitRule implements AmlRule {
 
   private static final double DAILY_VOLUME_LIMIT = 100_000.00;
@@ -44,6 +46,7 @@ public class DailyVolumeLimitRule implements AmlRule {
     long startTime = System.nanoTime();
 
     double totalVolume = context.volume24h() + transaction.money().amount().doubleValue();
+    log.debug("{} totalVolume = {}", transaction.accountFrom(), totalVolume);
     boolean isFlagged = totalVolume > DAILY_VOLUME_LIMIT;
     long durationMs = (System.nanoTime() - startTime) / 1_000_000;
 

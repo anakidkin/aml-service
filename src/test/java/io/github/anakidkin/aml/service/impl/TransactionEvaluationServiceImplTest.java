@@ -2,6 +2,7 @@ package io.github.anakidkin.aml.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.anakidkin.aml.cache.AccountVolumeCache;
 import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.Money;
 import io.github.anakidkin.aml.domain.OutboxStatus;
@@ -26,15 +27,20 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,6 +67,15 @@ class TransactionEvaluationServiceImplTest {
   private TransactionDomainMapper transactionDomainMapper;
 
   @Mock
+  private RedissonClient redisson;
+
+  @Mock
+  private AccountVolumeCache volumeCache;
+
+  @Mock
+  private RLock lock;
+
+  @Mock
   private AmlRule rule1;
 
   @Mock
@@ -72,9 +87,12 @@ class TransactionEvaluationServiceImplTest {
   private TransactionEvaluationServiceImpl evaluationService;
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws InterruptedException {
     when(rule1.getPriority()).thenReturn(1);
     when(rule2.getPriority()).thenReturn(2);
+
+    when(redisson.getLock(anyString())).thenReturn(lock);
+    when(lock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
 
     evaluationService = new TransactionEvaluationServiceImpl(
         List.of(rule2, rule1),
@@ -83,7 +101,9 @@ class TransactionEvaluationServiceImplTest {
         jpaTransactionRepository,
         jpaOutboxRepository,
         objectMapper,
-        transactionDomainMapper
+        transactionDomainMapper,
+        redisson,
+        volumeCache
     );
   }
 

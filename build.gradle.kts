@@ -57,6 +57,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-json")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
+    implementation("org.redisson:redisson-spring-boot-starter:4.7.0")
+
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation(platform("io.micrometer:micrometer-bom:1.17.0"))
     implementation("io.micrometer:micrometer-registry-prometheus")

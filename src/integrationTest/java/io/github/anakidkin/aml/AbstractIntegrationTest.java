@@ -18,6 +18,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.cassandra.CassandraContainer;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -31,12 +32,18 @@ public abstract class AbstractIntegrationTest {
   static final KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka:4.3.1")).withReuse(true);
   static final CassandraContainer cassandra = new CassandraContainer("cassandra:6.0")
       .withInitScript("cassandra/init-scripts/cassandra-tables.cql").withReuse(true);
+  @SuppressWarnings("resource")
+  static final GenericContainer<?> redis = new GenericContainer<>("valkey/valkey:9-alpine")
+      .withExposedPorts(6379)
+      .withCommand("valkey-server --requirepass testpassword")
+      .withReuse(true);
 
   static {
     // Start containers once for the entire JVM session
     postgres.start();
     kafka.start();
     cassandra.start();
+    redis.start();
   }
 
   @DynamicPropertySource
@@ -49,6 +56,10 @@ public abstract class AbstractIntegrationTest {
 
     registry.add("spring.cassandra.contact-points", () -> cassandra.getHost() + ":" + cassandra.getMappedPort(9042));
     registry.add("spring.cassandra.local-datacenter", cassandra::getLocalDatacenter);
+
+    registry.add("spring.data.redis.host", redis::getHost);
+    registry.add("spring.data.redis.port", redis::getFirstMappedPort);
+    registry.add("spring.data.redis.password", () -> "testpassword");
   }
 
   @Autowired

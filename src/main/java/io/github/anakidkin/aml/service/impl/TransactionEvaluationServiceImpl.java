@@ -2,6 +2,7 @@ package io.github.anakidkin.aml.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.anakidkin.aml.cache.AccountVolumeCache;
 import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.OutboxStatus;
 import io.github.anakidkin.aml.domain.RiskAssessment;
@@ -20,6 +21,9 @@ import io.github.anakidkin.aml.repository.JpaTransactionRepository;
 import io.github.anakidkin.aml.rules.AmlRule;
 import io.github.anakidkin.aml.service.TransactionEvaluationService;
 import io.micrometer.core.annotation.Timed;
+import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,13 +34,16 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-
+@Slf4j
 @Service
 public class TransactionEvaluationServiceImpl implements TransactionEvaluationService {
 
   private static final DateTimeFormatter DATE_FORMATTER =
       DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
+
+  private static final String REDIS_LOCK_KET_PREFIX = "lock:acc:";
 
   private final List<AmlRule> amlRules;
   private final CassandraHistoryRepository cassandraHistoryRepository;
@@ -45,6 +52,8 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
   private final JpaOutboxRepository jpaOutboxRepository;
   private final ObjectMapper objectMapper;
   private final TransactionDomainMapper transactionDomainMapper;
+  private final RedissonClient redisson;
+  private final AccountVolumeCache volumeCache;
 
 
   public TransactionEvaluationServiceImpl(
@@ -54,7 +63,9 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
       JpaTransactionRepository jpaTransactionRepository,
       JpaOutboxRepository jpaOutboxRepository,
       ObjectMapper objectMapper,
-      TransactionDomainMapper transactionDomainMapper
+      TransactionDomainMapper transactionDomainMapper,
+      RedissonClient redisson,
+      AccountVolumeCache volumeCache
   ) {
     this.amlRules = amlRules.stream()
         .sorted(Comparator.comparingInt(AmlRule::getPriority))
@@ -65,6 +76,8 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
     this.jpaOutboxRepository = jpaOutboxRepository;
     this.objectMapper = objectMapper;
     this.transactionDomainMapper = transactionDomainMapper;
+    this.redisson = redisson;
+    this.volumeCache = volumeCache;
   }
 
   @Override
@@ -75,20 +88,35 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
       percentiles = {0.50, 0.95, 0.99, 0.999}
   )
   public Transaction evaluate(Transaction transaction) {
-    AccountContext context = buildAccountContext(transaction);
+    String lockKey = REDIS_LOCK_KET_PREFIX + transaction.accountFrom();
+    RLock lock = redisson.getLock(lockKey);
+    try {
+      lock.lock(2, TimeUnit.SECONDS);
+      log.debug("Lock acquired for {}", transaction.accountFrom());
+      AccountContext context = buildAccountContext(transaction);
 
-    List<RuleResult> ruleResults = amlRules.stream()
-        .map(rule -> rule.evaluate(transaction, context))
-        .toList();
+      List<RuleResult> ruleResults = amlRules.stream()
+          .map(rule -> rule.evaluate(transaction, context))
+          .toList();
 
-    Transaction processedTransaction = procesTransaction(transaction, ruleResults);
+      Transaction processedTransaction = procesTransaction(transaction, ruleResults);
 
-    TransactionEntity entity = transactionDomainMapper.toEntity(processedTransaction);
-    jpaTransactionRepository.save(entity);
+      TransactionEntity entity = transactionDomainMapper.toEntity(processedTransaction);
+      jpaTransactionRepository.save(entity);
 
-    saveOutboxEvent(processedTransaction, ruleResults);
+      saveOutboxEvent(processedTransaction, ruleResults);
 
-    return processedTransaction;
+      if (entity.getStatus() != TransactionStatus.REJECTED) {
+        volumeCache.addAmount(transaction.accountFrom(), transaction.money().amount().doubleValue(), transaction.createdAt());
+      }
+
+      return processedTransaction;
+    } finally {
+      if (lock.isHeldByCurrentThread()) {
+        lock.unlock();
+        log.debug("Unlock acquired for {}", transaction.accountFrom());
+      }
+    }
   }
 
   private AccountContext buildAccountContext(Transaction transaction) {
@@ -96,10 +124,7 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
     Instant last24Hours = txTime.minus(24, ChronoUnit.HOURS);
     Instant last30Days = txTime.minus(30, ChronoUnit.DAYS);
 
-    BigDecimal volumeVal = cassandraHistoryRepository.sumAmount(
-        transaction.accountFrom(), last24Hours, txTime
-    );
-    double volume24h = (volumeVal != null) ? volumeVal.doubleValue() : 0.0;
+    double volume24h = volumeCache.get24hVolume(transaction.accountFrom(), txTime);
 
     long txCount24h = cassandraHistoryRepository.countTransactionsInWindow(
         transaction.accountFrom(), last24Hours, txTime
