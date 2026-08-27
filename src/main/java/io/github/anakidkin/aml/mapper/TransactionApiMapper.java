@@ -1,6 +1,5 @@
 package io.github.anakidkin.aml.mapper;
 
-import io.github.anakidkin.aml.domain.Money;
 import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.domain.TransactionStatus;
 import io.github.anakidkin.aml.dto.TransactionRequest;
@@ -18,16 +17,17 @@ import java.util.UUID;
  */
 @Mapper(
     componentModel = MappingConstants.ComponentModel.SPRING,
-    imports = {UUID.class, Instant.class, Money.class, TransactionStatus.class}
+    imports = {UUID.class, Instant.class, TransactionStatus.class}
 )
 public interface TransactionApiMapper {
 
   @Mapping(target = "id", expression = "java(UUID.randomUUID())")
   @Mapping(target = "status", expression = "java(TransactionStatus.NEW)")
-  @Mapping(target = "riskAssessment", ignore = true) // Оставляем null, так как в конструкторе НЕТ проверки на riskAssessment
   @Mapping(target = "createdAt", expression = "java(Instant.now())")
-  @Mapping(target = "updatedAt", expression = "java(Instant.now())")
-  @Mapping(target = "money", expression = "java(new Money(request.amount(), request.currency()))")
+  @Mapping(target = "money.amount", source = "amount")
+  @Mapping(target = "money.currency", source = "currency")
+  @Mapping(target = "updatedAt", ignore = true)
+  @Mapping(target = "riskAssessment", ignore = true)
   Transaction toDomain(TransactionRequest request);
 
   @Mapping(target = "amount", source = "money.amount")

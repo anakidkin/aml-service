@@ -37,7 +37,7 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD:secretpass}
       timeout: 2000ms
 
   kafka:
@@ -76,6 +76,9 @@ management:
     web:
       exposure:
         include: health,prometheus,metrics
+  endpoint:
+    metrics:
+      enabled: true
   metrics:
     tags:
       application: aml-service

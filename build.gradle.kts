@@ -92,6 +92,7 @@ dependencies {
     val gatlingImplementation = configurations.named("gatlingImplementation").get().name
     add(gatlingImplementation, "io.gatling.highcharts:gatling-charts-highcharts:3.15.1")
     add(gatlingImplementation, "io.gatling:gatling-app:3.15.1")
+    add(gatlingImplementation, "org.galaxio:gatling-kafka-plugin_2.13:2.0.0")
 }
 
 tasks.test {

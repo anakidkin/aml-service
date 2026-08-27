@@ -37,7 +37,6 @@ public record Transaction(
     Objects.requireNonNull(money, "money cannot be null");
     Objects.requireNonNull(status, "status cannot be null");
     Objects.requireNonNull(createdAt, "createdAt cannot be null");
-    Objects.requireNonNull(updatedAt, "updatedAt cannot be null");
   }
 }
 
