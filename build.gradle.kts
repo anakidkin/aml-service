@@ -125,6 +125,7 @@ jmh {
     jmhVersion.set("1.37")  // me.champeau.jmh forces 1.36
     resultFormat = "JSON"
     profilers.add("gc")
+    zip64 = true
 }
 
 val loadTest = tasks.register<Test>("loadTest") {

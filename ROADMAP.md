@@ -18,7 +18,7 @@ This document tracks planned technical enhancements, performance optimizations, 
 - [ ] **Gatling Load SLA Tuning:** Optimize the processing pipeline to pass Gatling SLA checks.
 - [X] **Kafka Listener Load Tests & Metrics:** Add performance tests and SLA metrics for the existing Kafka listener.
   Currently, Gatling only benchmarks the REST endpoint, leaving the asynchronous Kafka processing pipeline unmeasured.
-- [ ] Switch to the Virtual Threads
+- [X] Switch to the Virtual Threads
 - [ ] **GC & Allocation Profiling:** Address high object allocation rates identified in JMH benchmarks.
 - [X] **Redis / Valkey Integration:** Utilize the provisioned Redis/Valkey container and dependencies to cache
   frequently accessed data.

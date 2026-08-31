@@ -1,11 +1,13 @@
-package io.github.anakidkin.aml;
+package io.github.anakidkin.aml.service;
 
 import io.github.anakidkin.aml.config.AmlRulesConfig;
 import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.Money;
+import io.github.anakidkin.aml.domain.RuleResult;
 import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.domain.TransactionStatus;
 import io.github.anakidkin.aml.rules.AmlRule;
+import io.github.anakidkin.aml.service.impl.RuleEngineServiceImpl;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -24,28 +26,30 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @State(Scope.Benchmark)
-//@BenchmarkMode(Mode.SampleTime)
-//@BenchmarkMode(Mode.Throughput)
 @BenchmarkMode(Mode.All)
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 3, time = 1)
 @Measurement(iterations = 5, time = 2)
 @Fork(1)
-public class RuleEngineBenchmark {
+public class RuleEngineServiceBenchmark {
 
-  private List<AmlRule> rules;
+  private RuleEngineService ruleEngineService;
   private Transaction[] transactions;
   private AccountContext[] contexts;
 
-  private int index = 0;
+  private final AtomicInteger index = new AtomicInteger(0);
   private static final int DATASET_SIZE = 1024;
+  private static final int MASK = DATASET_SIZE - 1;
 
   @Setup
   public void setup() {
     AmlRulesConfig config = new AmlRulesConfig();
-    this.rules = config.amlRules();
+    List<AmlRule> rules = config.amlRules();
+
+    this.ruleEngineService = new RuleEngineServiceImpl(rules);
 
     this.transactions = new Transaction[DATASET_SIZE];
     this.contexts = new AccountContext[DATASET_SIZE];
@@ -74,12 +78,12 @@ public class RuleEngineBenchmark {
   }
 
   @Benchmark
-  public void evaluateAllRules(Blackhole bh) {
-    int idx = (index++) & (DATASET_SIZE - 1);
+  public void evaluateRulesViaService(Blackhole bh) {
+    int idx = index.getAndIncrement() & MASK;
     Transaction tx = transactions[idx];
     AccountContext context = contexts[idx];
-    for (AmlRule rule : rules) {
-      bh.consume(rule.evaluate(tx, context));
-    }
+
+    List<RuleResult> results = ruleEngineService.evaluate(tx, context);
+    bh.consume(results);
   }
 }
