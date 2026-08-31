@@ -32,7 +32,7 @@ This document tracks planned technical enhancements, performance optimizations, 
 
 ### Developer Experience
 
-- [ ] linters
-- [ ] static code analysis
+- [X] linters
+- [X] static code analysis
 - [ ] CI/CD
 - [ ] Dockerfile

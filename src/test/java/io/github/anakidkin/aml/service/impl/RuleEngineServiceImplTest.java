@@ -1,5 +1,8 @@
 package io.github.anakidkin.aml.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
 import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.Money;
 import io.github.anakidkin.aml.domain.RuleResult;
@@ -7,6 +10,10 @@ import io.github.anakidkin.aml.domain.RuleStatus;
 import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.domain.TransactionStatus;
 import io.github.anakidkin.aml.rules.AmlRule;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,22 +21,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 class RuleEngineServiceImplTest {
 
-  @Mock
-  private AmlRule rule1;
+  @Mock private AmlRule rule1;
 
-  @Mock
-  private AmlRule rule2;
+  @Mock private AmlRule rule2;
 
   private RuleEngineServiceImpl ruleEngineService;
 
@@ -60,9 +57,15 @@ class RuleEngineServiceImplTest {
 
   private Transaction createTransaction() {
     return new Transaction(
-        UUID.randomUUID(), "ACC_1", "ACC_2",
-        new Money(new BigDecimal("100"), "USD"), "5411", false,
-        TransactionStatus.PENDING, null, Instant.now(), Instant.now()
-    );
+        UUID.randomUUID(),
+        "ACC_1",
+        "ACC_2",
+        new Money(new BigDecimal("100"), "USD"),
+        "5411",
+        false,
+        TransactionStatus.PENDING,
+        null,
+        Instant.now(),
+        Instant.now());
   }
 }

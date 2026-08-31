@@ -1,5 +1,7 @@
 package io.github.anakidkin.aml.entity;
 
+import java.time.Instant;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -10,9 +12,6 @@ import org.springframework.data.cassandra.core.cql.PrimaryKeyType;
 import org.springframework.data.cassandra.core.mapping.Column;
 import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn;
 import org.springframework.data.cassandra.core.mapping.Table;
-
-import java.time.Instant;
-import java.util.UUID;
 
 @Table(value = "audit_logs", keyspace = "aml_audit")
 @Getter
@@ -25,10 +24,17 @@ public class AuditLogEntity {
   @PrimaryKeyColumn(name = "transaction_id", type = PrimaryKeyType.PARTITIONED)
   private UUID transactionId;
 
-  @PrimaryKeyColumn(name = "created_at", type = PrimaryKeyType.CLUSTERED, ordering = Ordering.DESCENDING)
+  @PrimaryKeyColumn(
+      name = "created_at",
+      type = PrimaryKeyType.CLUSTERED,
+      ordering = Ordering.DESCENDING)
   private Instant createdAt;
 
-  @PrimaryKeyColumn(name = "rule_id", ordinal = 1, type = PrimaryKeyType.CLUSTERED, ordering = Ordering.ASCENDING)
+  @PrimaryKeyColumn(
+      name = "rule_id",
+      ordinal = 1,
+      type = PrimaryKeyType.CLUSTERED,
+      ordering = Ordering.ASCENDING)
   private String ruleId;
 
   @Column("rule_version")
@@ -48,5 +54,4 @@ public class AuditLogEntity {
 
   @Column("risk_score")
   private Double riskScore;
-
 }

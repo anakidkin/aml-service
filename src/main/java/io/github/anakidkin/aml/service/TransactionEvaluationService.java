@@ -1,11 +1,8 @@
 package io.github.anakidkin.aml.service;
 
-
 import io.github.anakidkin.aml.domain.Transaction;
 
-/**
- * Primary inbound port (use case) defining the entry point for evaluating AML risk.
- */
+/** Primary inbound port (use case) defining the entry point for evaluating AML risk. */
 public interface TransactionEvaluationService {
 
   /**

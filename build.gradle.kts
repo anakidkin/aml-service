@@ -5,6 +5,10 @@ plugins {
 
     id("io.gatling.gradle") version "3.14.9.2"
     id("me.champeau.jmh") version "0.7.3"
+
+    id("checkstyle")
+    id("com.diffplug.spotless") version "8.10.0"
+    id("com.github.spotbugs") version "6.5.11"
 }
 
 group = "io.github.anakidkin"
@@ -12,6 +16,35 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+}
+
+spotless {
+    java {
+        googleJavaFormat("1.36.1")
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+checkstyle {
+    toolVersion = "14.1.0"
+    configFile = file("${rootDir}/config/checkstyle/checkstyle.xml")
+    isIgnoreFailures = false
+}
+
+spotbugs {
+    toolVersion = "4.10.2"
+    ignoreFailures = false
+    effort.set(com.github.spotbugs.snom.Effort.MAX)
+    reportLevel.set(com.github.spotbugs.snom.Confidence.MEDIUM)
+}
+
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask::class.java).configureEach {
+    reports {
+        create("xml") { required.set(false) }
+        create("html") { required.set(true) }
+    }
 }
 
 sourceSets {
@@ -90,9 +123,13 @@ dependencies {
     add(jmhAnnotationProcessor, "org.openjdk.jmh:jmh-generator-annprocess:1.37")
     // gatling
     val gatlingImplementation = configurations.named("gatlingImplementation").get().name
+    val gatlingCompileOnly = configurations.named("gatlingCompileOnly").get().name
+    val gatlingAnnotationProcessor = configurations.named("gatlingAnnotationProcessor").get().name
     add(gatlingImplementation, "io.gatling.highcharts:gatling-charts-highcharts:3.15.1")
     add(gatlingImplementation, "io.gatling:gatling-app:3.15.1")
     add(gatlingImplementation, "org.galaxio:gatling-kafka-plugin_2.13:2.0.0")
+    add(gatlingCompileOnly, "org.projectlombok:lombok")
+    add(gatlingAnnotationProcessor, "org.projectlombok:lombok")
 }
 
 tasks.test {
@@ -128,16 +165,12 @@ jmh {
     zip64 = true
 }
 
-val loadTest = tasks.register<Test>("loadTest") {
-    description = "Runs Gatling performance test with Testcontainers environment."
-    group = "verification"
-
-    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
-    classpath = sourceSets["integrationTest"].runtimeClasspath
-
-    useJUnitPlatform {
-        includeTags("load-test")
+tasks.named<Test>("integrationTest") {
+    testLogging {
+        events("passed", "skipped", "failed", "standardOut", "standardError")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showCauses = true
+        showExceptions = true
+        showStackTraces = true
     }
-
-    systemProperty("runGatling", "true")
 }

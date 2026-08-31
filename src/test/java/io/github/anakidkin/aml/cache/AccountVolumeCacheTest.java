@@ -1,6 +1,19 @@
 package io.github.anakidkin.aml.cache;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import io.github.anakidkin.aml.repository.CassandraHistoryRepository;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,37 +25,18 @@ import org.redisson.api.RHyperLogLog;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RedissonClient;
 
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 class AccountVolumeCacheTest {
 
-  @Mock
-  private RedissonClient redisson;
+  @Mock private RedissonClient redisson;
 
-  @Mock
-  private CassandraHistoryRepository cassandraHistoryRepository;
+  @Mock private CassandraHistoryRepository cassandraHistoryRepository;
 
-  @Mock
-  private RScoredSortedSet<String> scoredSortedSet;
+  @Mock private RScoredSortedSet<String> scoredSortedSet;
 
-  @Mock
-  private RHyperLogLog<String> hyperLogLog;
+  @Mock private RHyperLogLog<String> hyperLogLog;
 
-  @Mock
-  private RBucket<String> bucket;
+  @Mock private RBucket<String> bucket;
 
   private AccountVolumeCache volumeCache;
 
@@ -57,7 +51,8 @@ class AccountVolumeCacheTest {
     String accountFrom = "ACC_1001";
     Instant now = Instant.now();
 
-    when(redisson.<String>getScoredSortedSet("daily_volume:" + accountFrom)).thenReturn(scoredSortedSet);
+    when(redisson.<String>getScoredSortedSet("daily_volume:" + accountFrom))
+        .thenReturn(scoredSortedSet);
     when(scoredSortedSet.isExists()).thenReturn(true);
     when(scoredSortedSet.iterator()).thenReturn(List.of("uuid1:100.0", "uuid2:250.5").iterator());
     when(scoredSortedSet.size()).thenReturn(2);
@@ -78,13 +73,15 @@ class AccountVolumeCacheTest {
     String accountFrom = "ACC_1001";
     Instant now = Instant.now();
 
-    when(redisson.<String>getScoredSortedSet("daily_volume:" + accountFrom)).thenReturn(scoredSortedSet);
+    when(redisson.<String>getScoredSortedSet("daily_volume:" + accountFrom))
+        .thenReturn(scoredSortedSet);
     when(redisson.<String>getBucket("account_active:" + accountFrom)).thenReturn(bucket);
     when(scoredSortedSet.isExists()).thenReturn(false);
 
     when(cassandraHistoryRepository.sumAmount(eq(accountFrom), any(Instant.class), eq(now)))
         .thenReturn(new BigDecimal("500.00"));
-    when(cassandraHistoryRepository.countTransactionsInWindow(eq(accountFrom), any(Instant.class), eq(now)))
+    when(cassandraHistoryRepository.countTransactionsInWindow(
+            eq(accountFrom), any(Instant.class), eq(now)))
         .thenReturn(5L);
 
     Metrics24h metrics = volumeCache.get24hMetrics(accountFrom, now);
@@ -102,7 +99,8 @@ class AccountVolumeCacheTest {
   @DisplayName("Should return count of unique counterparties from HyperLogLog")
   void shouldReturnUniqueCounterpartiesFromHll() {
     String accountTo = "ACC_2002";
-    when(redisson.<String>getHyperLogLog("unique_counterparties:" + accountTo)).thenReturn(hyperLogLog);
+    when(redisson.<String>getHyperLogLog("unique_counterparties:" + accountTo))
+        .thenReturn(hyperLogLog);
     when(hyperLogLog.count()).thenReturn(42L);
 
     int count = volumeCache.getUniqueCounterparties24h(accountTo);
@@ -117,8 +115,10 @@ class AccountVolumeCacheTest {
     String accountTo = "ACC_2002";
     Instant now = Instant.now();
 
-    when(redisson.<String>getScoredSortedSet("daily_volume:" + accountFrom)).thenReturn(scoredSortedSet);
-    when(redisson.<String>getHyperLogLog("unique_counterparties:" + accountTo)).thenReturn(hyperLogLog);
+    when(redisson.<String>getScoredSortedSet("daily_volume:" + accountFrom))
+        .thenReturn(scoredSortedSet);
+    when(redisson.<String>getHyperLogLog("unique_counterparties:" + accountTo))
+        .thenReturn(hyperLogLog);
     when(redisson.<String>getBucket("account_active:" + accountFrom)).thenReturn(bucket);
 
     volumeCache.addTransaction(accountFrom, accountTo, 150.0, now);

@@ -1,6 +1,5 @@
 package io.github.anakidkin.aml.rules.impl;
 
-
 import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.RuleResult;
 import io.github.anakidkin.aml.domain.RuleStatus;
@@ -32,10 +31,11 @@ public class CounterpartyCountRule implements AmlRule {
   }
 
   /**
-   * Evaluates whether the number of unique counterparties in the account context exceeds the predefined threshold.
+   * Evaluates whether the number of unique counterparties in the account context exceeds the
+   * predefined threshold.
    *
    * @param transaction current transaction under evaluation
-   * @param context     historical account metrics including unique counterparty count
+   * @param context historical account metrics including unique counterparty count
    * @return {@link RuleResult} containing the evaluation status and execution details
    */
   @Override
@@ -49,10 +49,12 @@ public class CounterpartyCountRule implements AmlRule {
         getRuleCode(),
         getRuleVersion(),
         isFlagged ? RuleStatus.FLAGGED : RuleStatus.PASSED,
-        isFlagged ? String.format("Unique counterparties in 24h (%d) exceeds limit (%d)",
-            context.uniqueCounterparties24h(), MAX_COUNTERPARTIES_24H) : null,
+        isFlagged
+            ? String.format(
+                "Unique counterparties in 24h (%d) exceeds limit (%d)",
+                context.uniqueCounterparties24h(), MAX_COUNTERPARTIES_24H)
+            : null,
         durationMs,
-        true
-    );
+        true);
   }
 }

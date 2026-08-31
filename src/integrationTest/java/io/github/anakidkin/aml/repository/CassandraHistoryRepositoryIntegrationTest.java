@@ -1,20 +1,15 @@
 package io.github.anakidkin.aml.repository;
 
-import io.github.anakidkin.aml.AbstractIntegrationTest;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.anakidkin.aml.AbstractIntegrationTest;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-@Testcontainers
-@SpringBootTest
 class CassandraHistoryRepositoryIntegrationTest extends AbstractIntegrationTest {
 
   @Test
@@ -25,8 +20,10 @@ class CassandraHistoryRepositoryIntegrationTest extends AbstractIntegrationTest 
     Instant windowEnd = now.plus(Duration.ofHours(1));
     var accountId = UUID.randomUUID().toString();
 
-    insertTransactionToCassandra(accountId, new BigDecimal("500.00"), now.minus(Duration.ofHours(2)));
-    insertTransactionToCassandra(accountId, new BigDecimal("150.00"), now.minus(Duration.ofMinutes(30)));
+    insertTransactionToCassandra(
+        accountId, new BigDecimal("500.00"), now.minus(Duration.ofHours(2)));
+    insertTransactionToCassandra(
+        accountId, new BigDecimal("150.00"), now.minus(Duration.ofMinutes(30)));
 
     var sum = cassandraHistoryRepository.sumAmount(accountId, windowStart, windowEnd);
 
@@ -50,8 +47,10 @@ class CassandraHistoryRepositoryIntegrationTest extends AbstractIntegrationTest 
     assertThat(totalSum).isEqualTo(new BigDecimal("600.00"));
   }
 
-  private void insertTransactionToCassandra(String accountFrom, BigDecimal amount, Instant timestamp) {
-    String cql = """
+  private void insertTransactionToCassandra(
+      String accountFrom, BigDecimal amount, Instant timestamp) {
+    String cql =
+        """
         INSERT INTO aml_ks.account_transaction_history
         (account_from, is_p2p, created_at, transaction_id, account_to, amount, currency, mcc_code)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -66,7 +65,6 @@ class CassandraHistoryRepositoryIntegrationTest extends AbstractIntegrationTest 
         "ACC_COUNTERPARTY",
         amount,
         "USD",
-        "5411"
-    );
+        "5411");
   }
 }

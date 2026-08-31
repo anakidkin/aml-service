@@ -16,7 +16,8 @@ public class KafkaVirtualThreadsConfig {
     var factory = new ConcurrentKafkaListenerContainerFactory<String, Object>();
     factory.setConsumerFactory(consumerFactory);
 
-    factory.getContainerProperties()
+    factory
+        .getContainerProperties()
         .setListenerTaskExecutor(new VirtualThreadTaskExecutor("kafka-vt-"));
 
     return factory;

@@ -22,11 +22,11 @@ public class InboundTransactionListener {
 
   @KafkaListener(
       topics = "${aml.kafka.topics.inbound-transactions:aml.transactions-inbound.v1}",
-      groupId = "${aml.kafka.groups.core-processor:aml-core-processor-group}"
-  )
+      groupId = "${aml.kafka.groups.core-processor:aml-core-processor-group}")
   public void onInboundTransaction(String payload) {
     try {
-      InboundTransactionEvent event = objectMapper.readValue(payload, InboundTransactionEvent.class);
+      InboundTransactionEvent event =
+          objectMapper.readValue(payload, InboundTransactionEvent.class);
       log.info("Received inbound transaction event txId={}", event.transactionId());
       Transaction transaction = transactionDomainMapper.toDomain(event);
       evaluationService.evaluate(transaction);

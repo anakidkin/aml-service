@@ -6,21 +6,18 @@ import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.repository.CassandraHistoryRepository;
 import io.github.anakidkin.aml.service.AccountContextService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class AccountContextServiceImpl implements AccountContextService {
 
-
   private final CassandraHistoryRepository cassandraHistoryRepository;
   private final AccountVolumeCache volumeCache;
-
 
   @Override
   public AccountContext buildAccountContext(Transaction transaction) {
@@ -37,9 +34,9 @@ public class AccountContextServiceImpl implements AccountContextService {
     if (metrics24h.txCount24h() > 0) {
       isDormantAccount = false;
     } else {
-      long txCount30d = cassandraHistoryRepository.countTransactionsInWindow(
-          transaction.accountFrom(), last30Days, txTime
-      );
+      long txCount30d =
+          cassandraHistoryRepository.countTransactionsInWindow(
+              transaction.accountFrom(), last30Days, txTime);
       isDormantAccount = (txCount30d == 0);
     }
 
@@ -52,12 +49,10 @@ public class AccountContextServiceImpl implements AccountContextService {
      *   2. Business Tolerance: A minor lag (1-2s) in a 30-day window causes negligible deviation
      *      in the P2P ratio percentage and is fully acceptable for AML rules.
      */
-    BigDecimal total30dVal = cassandraHistoryRepository.sumAmount(
-        transaction.accountFrom(), last30Days, txTime
-    );
-    BigDecimal p2p30dVal = cassandraHistoryRepository.sumP2pAmount(
-        transaction.accountFrom(), last30Days, txTime
-    );
+    BigDecimal total30dVal =
+        cassandraHistoryRepository.sumAmount(transaction.accountFrom(), last30Days, txTime);
+    BigDecimal p2p30dVal =
+        cassandraHistoryRepository.sumP2pAmount(transaction.accountFrom(), last30Days, txTime);
     double p2pRatio30d = 0.0;
     if (total30dVal != null && total30dVal.compareTo(BigDecimal.ZERO) > 0) {
       double total30d = total30dVal.doubleValue();
@@ -70,7 +65,6 @@ public class AccountContextServiceImpl implements AccountContextService {
         metrics24h.txCount24h(),
         uniqueCounterparties24h,
         p2pRatio30d,
-        isDormantAccount
-    );
+        isDormantAccount);
   }
 }

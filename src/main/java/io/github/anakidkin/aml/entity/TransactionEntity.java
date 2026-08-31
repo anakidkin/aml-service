@@ -8,15 +8,14 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
 
 @Entity
 @Table(name = "transactions")
@@ -27,8 +26,7 @@ import java.util.UUID;
 @Builder
 public class TransactionEntity {
 
-  @Id
-  private UUID id;
+  @Id private UUID id;
 
   @Column(name = "account_from", nullable = false)
   private String accountFrom;
@@ -65,5 +63,4 @@ public class TransactionEntity {
   protected void onUpdate() {
     this.updatedAt = Instant.now();
   }
-
 }

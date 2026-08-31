@@ -1,22 +1,21 @@
 package io.github.anakidkin.aml.rules.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.Money;
 import io.github.anakidkin.aml.domain.RuleResult;
 import io.github.anakidkin.aml.domain.RuleStatus;
 import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.domain.TransactionStatus;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class CounterpartyCountRuleTest {
 
@@ -36,23 +35,12 @@ class CounterpartyCountRuleTest {
   }
 
   @ParameterizedTest(name = "Counterparties count={0} -> Status={1}, IsHard=true")
-  @CsvSource({
-      "0, PASSED",
-      "5, PASSED",
-      "10, PASSED",
-      "11, FLAGGED",
-      "100, FLAGGED"
-  })
-  @DisplayName("Should flag transaction when 24h unique counterparties count exceeds threshold of 10")
+  @CsvSource({"0, PASSED", "5, PASSED", "10, PASSED", "11, FLAGGED", "100, FLAGGED"})
+  @DisplayName(
+      "Should flag transaction when 24h unique counterparties count exceeds threshold of 10")
   void shouldEvaluateCounterpartiesThreshold(int uniqueCounterparties, RuleStatus expectedStatus) {
     Transaction tx = createDummyTransaction();
-    AccountContext context = new AccountContext(
-        0.0,
-        0,
-        uniqueCounterparties,
-        0.0,
-        false
-    );
+    AccountContext context = new AccountContext(0.0, 0, uniqueCounterparties, 0.0, false);
 
     RuleResult result = rule.evaluate(tx, context);
 
@@ -62,7 +50,8 @@ class CounterpartyCountRuleTest {
 
     if (expectedStatus == RuleStatus.FLAGGED) {
       assertThat(result.triggerReason())
-          .contains("Unique counterparties in 24h (" + uniqueCounterparties + ") exceeds limit (10)");
+          .contains(
+              "Unique counterparties in 24h (" + uniqueCounterparties + ") exceeds limit (10)");
     } else {
       assertThat(result.triggerReason()).isNull();
     }
@@ -79,7 +68,6 @@ class CounterpartyCountRuleTest {
         TransactionStatus.PENDING,
         null,
         Instant.now(),
-        Instant.now()
-    );
+        Instant.now());
   }
 }

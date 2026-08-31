@@ -1,22 +1,21 @@
 package io.github.anakidkin.aml.rules.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.Money;
 import io.github.anakidkin.aml.domain.RuleResult;
 import io.github.anakidkin.aml.domain.RuleStatus;
 import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.domain.TransactionStatus;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class DormantAccountSpikeRuleTest {
 
@@ -37,21 +36,15 @@ class DormantAccountSpikeRuleTest {
 
   @ParameterizedTest(name = "IsDormant={0}, Amount={1} -> Status={2}")
   @CsvSource({
-      "false, 100000.00, PASSED",
-      "true,  49999.99,  PASSED",
-      "true,  50000.00,  FLAGGED",
-      "true,  100000.00, FLAGGED"
+    "false, 100000.00, PASSED",
+    "true,  49999.99,  PASSED",
+    "true,  50000.00,  FLAGGED",
+    "true,  100000.00, FLAGGED"
   })
   @DisplayName("Should flag transaction on dormant account when amount is 50,000.00 or higher")
   void shouldEvaluateDormantSpike(boolean isDormant, String amount, RuleStatus expectedStatus) {
     Transaction tx = createTransaction(new BigDecimal(amount));
-    AccountContext context = new AccountContext(
-        0.0,
-        0,
-        0,
-        0.0,
-        isDormant
-    );
+    AccountContext context = new AccountContext(0.0, 0, 0, 0.0, isDormant);
 
     RuleResult result = rule.evaluate(tx, context);
 
@@ -79,7 +72,6 @@ class DormantAccountSpikeRuleTest {
         TransactionStatus.PENDING,
         null,
         Instant.now(),
-        Instant.now()
-    );
+        Instant.now());
   }
 }

@@ -1,22 +1,21 @@
 package io.github.anakidkin.aml.rules.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.Money;
 import io.github.anakidkin.aml.domain.RuleResult;
 import io.github.anakidkin.aml.domain.RuleStatus;
 import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.domain.TransactionStatus;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class P2pUtilizationRatioRuleTest {
 
@@ -37,23 +36,17 @@ class P2pUtilizationRatioRuleTest {
 
   @ParameterizedTest(name = "P2P ratio 30d={0} -> Status={1}")
   @CsvSource({
-      "0.00, PASSED",
-      "0.50, PASSED",
-      "0.80, PASSED",
-      "0.801, FLAGGED",
-      "0.95, FLAGGED",
-      "1.00, FLAGGED"
+    "0.00, PASSED",
+    "0.50, PASSED",
+    "0.80, PASSED",
+    "0.801, FLAGGED",
+    "0.95, FLAGGED",
+    "1.00, FLAGGED"
   })
   @DisplayName("Should flag transaction when 30-day P2P ratio strictly exceeds 80%")
   void shouldEvaluateP2pRatioThreshold(double p2pRatio, RuleStatus expectedStatus) {
     Transaction tx = createTransaction();
-    AccountContext context = new AccountContext(
-        0.0,
-        0,
-        0,
-        p2pRatio,
-        false
-    );
+    AccountContext context = new AccountContext(0.0, 0, 0, p2pRatio, false);
 
     RuleResult result = rule.evaluate(tx, context);
 
@@ -62,9 +55,7 @@ class P2pUtilizationRatioRuleTest {
     assertThat(result.isHard()).isFalse();
 
     if (expectedStatus == RuleStatus.FLAGGED) {
-      assertThat(result.triggerReason())
-          .contains("P2P ratio")
-          .contains("exceeds threshold (80%)");
+      assertThat(result.triggerReason()).contains("P2P ratio").contains("exceeds threshold (80%)");
     } else {
       assertThat(result.triggerReason()).isNull();
     }
@@ -81,7 +72,6 @@ class P2pUtilizationRatioRuleTest {
         TransactionStatus.PENDING,
         null,
         Instant.now(),
-        Instant.now()
-    );
+        Instant.now());
   }
 }

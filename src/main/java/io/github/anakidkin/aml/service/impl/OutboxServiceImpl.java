@@ -10,11 +10,10 @@ import io.github.anakidkin.aml.mapper.TransactionDomainMapper;
 import io.github.anakidkin.aml.repository.JpaOutboxRepository;
 import io.github.anakidkin.aml.repository.JpaTransactionRepository;
 import io.github.anakidkin.aml.service.OutboxService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -39,12 +38,13 @@ public class OutboxServiceImpl implements OutboxService {
     try {
       String payloadJson = objectMapper.writeValueAsString(event);
 
-      OutboxEventEntity outboxEvent = OutboxEventEntity.builder()
-          .aggregateId(tx.id())
-          .aggregateType("transaction")
-          .eventType("TRANSACTION_EVALUATED")
-          .payload(payloadJson)
-          .build();
+      OutboxEventEntity outboxEvent =
+          OutboxEventEntity.builder()
+              .aggregateId(tx.id())
+              .aggregateType("transaction")
+              .eventType("TRANSACTION_EVALUATED")
+              .payload(payloadJson)
+              .build();
 
       jpaOutboxRepository.save(outboxEvent);
     } catch (JsonProcessingException e) {

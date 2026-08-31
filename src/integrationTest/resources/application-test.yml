@@ -1,0 +1,7 @@
+#testcontainer:
+#  reuse:
+#    enabled: true
+
+#logging:
+#  level:
+#    root: DEBUG
