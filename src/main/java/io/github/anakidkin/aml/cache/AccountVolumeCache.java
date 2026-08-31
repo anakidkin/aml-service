@@ -1,18 +1,17 @@
 package io.github.anakidkin.aml.cache;
 
 import io.github.anakidkin.aml.repository.CassandraHistoryRepository;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RHyperLogLog;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
-
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -27,8 +26,8 @@ public class AccountVolumeCache {
   private final CassandraHistoryRepository cassandraHistoryRepository;
 
   /**
-   * Fetches 24-hour volume, transaction count, and activity status from Redis.
-   * MUST be executed within Redisson Lock context!
+   * Fetches 24-hour volume, transaction count, and activity status from Redis. MUST be executed
+   * within Redisson Lock context!
    */
   public Metrics24h get24hMetrics(String accountFrom, Instant txTime) {
     String volumeKey = VOLUME_KEY_PREFIX + accountFrom;
@@ -49,18 +48,14 @@ public class AccountVolumeCache {
     return new Metrics24h(sum, count, true); // Active because key exists
   }
 
-  /**
-   * Returns estimated count of unique counterparties interacting with accountTo in 24h.
-   */
+  /** Returns estimated count of unique counterparties interacting with accountTo in 24h. */
   public int getUniqueCounterparties24h(String accountTo) {
     String hllKey = HLL_KEY_PREFIX + accountTo;
     RHyperLogLog<String> hll = redisson.getHyperLogLog(hllKey);
     return (int) hll.count();
   }
 
-  /**
-   * Adds an approved transaction to the Redis sliding window.
-   */
+  /** Adds an approved transaction to the Redis sliding window. */
   public void addTransaction(String accountFrom, String accountTo, double amount, Instant txTime) {
     log.debug("Adding amount {} to cache for account {}", amount, accountFrom);
 
@@ -87,7 +82,8 @@ public class AccountVolumeCache {
     Instant last24Hours = txTime.minus(24, ChronoUnit.HOURS);
     Instant last30Days = txTime.minus(30, ChronoUnit.DAYS);
     BigDecimal volumeVal = cassandraHistoryRepository.sumAmount(accountFrom, last24Hours, txTime);
-    long txCount30d = cassandraHistoryRepository.countTransactionsInWindow(accountFrom, last30Days, txTime);
+    long txCount30d =
+        cassandraHistoryRepository.countTransactionsInWindow(accountFrom, last30Days, txTime);
     double volume24h = (volumeVal != null) ? volumeVal.doubleValue() : 0.0;
 
     if (volume24h > 0) {

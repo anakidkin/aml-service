@@ -1,6 +1,5 @@
 package io.github.anakidkin.aml.rules.impl;
 
-
 import io.github.anakidkin.aml.domain.AccountContext;
 import io.github.anakidkin.aml.domain.RuleResult;
 import io.github.anakidkin.aml.domain.RuleStatus;
@@ -38,7 +37,7 @@ public class DailyVolumeLimitRule implements AmlRule {
    * transaction, exceeds daily operational thresholds.
    *
    * @param transaction current transaction under evaluation
-   * @param context     historical account metrics including 24-hour volume
+   * @param context historical account metrics including 24-hour volume
    * @return {@link RuleResult} containing the evaluation status and execution details
    */
   @Override
@@ -54,10 +53,11 @@ public class DailyVolumeLimitRule implements AmlRule {
         getRuleCode(),
         getRuleVersion(),
         isFlagged ? RuleStatus.FLAGGED : RuleStatus.PASSED,
-        isFlagged ? String.format("24h total volume (%.2f) exceeds limit (%.2f)",
-            totalVolume, DAILY_VOLUME_LIMIT) : null,
+        isFlagged
+            ? String.format(
+                "24h total volume (%.2f) exceeds limit (%.2f)", totalVolume, DAILY_VOLUME_LIMIT)
+            : null,
         durationMs,
-        true
-    );
+        true);
   }
 }

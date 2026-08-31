@@ -18,18 +18,18 @@ public class TransactionEvaluatedHistoryListener {
 
   @KafkaListener(
       topics = "${aml.kafka.topics.transaction-evaluated:aml.transaction-evaluated.v1}",
-      groupId = "${aml.kafka.groups.history-writer:aml-history-writer-group}"
-  )
+      groupId = "${aml.kafka.groups.history-writer:aml-history-writer-group}")
   public void onTransactionEvaluated(String payload) {
     log.info("onTransactionEvaluated payload = {}", payload);
     try {
-      TransactionEvaluatedEvent event = objectMapper.readValue(payload, TransactionEvaluatedEvent.class);
+      TransactionEvaluatedEvent event =
+          objectMapper.readValue(payload, TransactionEvaluatedEvent.class);
       transactionProjectionService.projectTransactionEvaluation(event);
-      log.debug("Successfully saved transaction history to Cassandra for tx={}", event.transactionId());
+      log.debug(
+          "Successfully saved transaction history to Cassandra for tx={}", event.transactionId());
     } catch (Exception e) {
       log.error("Failed to process transaction history event for payload: {}", payload, e);
       throw new RuntimeException("Error persisting event to Cassandra", e);
     }
   }
-
 }

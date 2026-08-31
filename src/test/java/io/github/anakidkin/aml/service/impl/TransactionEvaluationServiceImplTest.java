@@ -1,31 +1,5 @@
 package io.github.anakidkin.aml.service.impl;
 
-import io.github.anakidkin.aml.cache.AccountVolumeCache;
-import io.github.anakidkin.aml.domain.AccountContext;
-import io.github.anakidkin.aml.domain.Money;
-import io.github.anakidkin.aml.domain.RuleResult;
-import io.github.anakidkin.aml.domain.Transaction;
-import io.github.anakidkin.aml.domain.TransactionStatus;
-import io.github.anakidkin.aml.service.AccountContextService;
-import io.github.anakidkin.aml.service.OutboxService;
-import io.github.anakidkin.aml.service.RuleEngineService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,29 +12,47 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.anakidkin.aml.cache.AccountVolumeCache;
+import io.github.anakidkin.aml.domain.AccountContext;
+import io.github.anakidkin.aml.domain.Money;
+import io.github.anakidkin.aml.domain.RuleResult;
+import io.github.anakidkin.aml.domain.Transaction;
+import io.github.anakidkin.aml.domain.TransactionStatus;
+import io.github.anakidkin.aml.service.AccountContextService;
+import io.github.anakidkin.aml.service.OutboxService;
+import io.github.anakidkin.aml.service.RuleEngineService;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.web.server.ResponseStatusException;
+
 @ExtendWith(MockitoExtension.class)
 class TransactionEvaluationServiceImplTest {
 
-  @Mock
-  private RuleEngineService ruleEngineService;
+  @Mock private RuleEngineService ruleEngineService;
 
-  @Mock
-  private AccountContextService accountContextService;
+  @Mock private AccountContextService accountContextService;
 
-  @Mock
-  private OutboxService outboxService;
+  @Mock private OutboxService outboxService;
 
-  @Mock
-  private RedissonClient redisson;
+  @Mock private RedissonClient redisson;
 
-  @Mock
-  private AccountVolumeCache volumeCache;
+  @Mock private AccountVolumeCache volumeCache;
 
-  @Mock
-  private RLock lock;
+  @Mock private RLock lock;
 
-  @InjectMocks
-  private TransactionEvaluationServiceImpl evaluationService;
+  @InjectMocks private TransactionEvaluationServiceImpl evaluationService;
 
   @BeforeEach
   void setUp() {
@@ -73,7 +65,8 @@ class TransactionEvaluationServiceImplTest {
   }
 
   @Test
-  @DisplayName("Should evaluate rules, save transaction and update volume cache when status is APPROVED")
+  @DisplayName(
+      "Should evaluate rules, save transaction and update volume cache when status is APPROVED")
   void shouldEvaluateAndSaveApprovedTransaction() throws InterruptedException {
     mockSuccessfulLock();
     Transaction tx = createTransaction(TransactionStatus.PENDING);
@@ -93,7 +86,9 @@ class TransactionEvaluationServiceImplTest {
     verify(accountContextService).buildAccountContext(tx);
     verify(ruleEngineService).evaluate(tx, mockContext);
     verify(outboxService).save(any(), eq(mockRuleResults));
-    verify(volumeCache).addTransaction(tx.accountFrom(), tx.accountTo(), tx.money().amount().doubleValue(), tx.createdAt());
+    verify(volumeCache)
+        .addTransaction(
+            tx.accountFrom(), tx.accountTo(), tx.money().amount().doubleValue(), tx.createdAt());
     verify(lock).unlock();
   }
 
@@ -136,7 +131,8 @@ class TransactionEvaluationServiceImplTest {
   void shouldAlwaysReleaseLockOnException() throws InterruptedException {
     mockSuccessfulLock();
     Transaction tx = createTransaction(TransactionStatus.PENDING);
-    when(accountContextService.buildAccountContext(tx)).thenThrow(new RuntimeException("Cassandra timeout"));
+    when(accountContextService.buildAccountContext(tx))
+        .thenThrow(new RuntimeException("Cassandra timeout"));
 
     assertThatThrownBy(() -> evaluationService.evaluate(tx))
         .isInstanceOf(RuntimeException.class)
@@ -156,7 +152,8 @@ class TransactionEvaluationServiceImplTest {
     when(accountContextService.buildAccountContext(tx)).thenReturn(createAccountContext());
     when(outboxService.save(any(), any())).thenReturn(approvedTx);
     doThrow(new RuntimeException("Redis down"))
-        .when(volumeCache).addTransaction(anyString(), anyString(), anyDouble(), any());
+        .when(volumeCache)
+        .addTransaction(anyString(), anyString(), anyDouble(), any());
 
     Transaction result = evaluationService.evaluate(tx);
 
@@ -179,7 +176,6 @@ class TransactionEvaluationServiceImplTest {
         status,
         null,
         Instant.now(),
-        Instant.now()
-    );
+        Instant.now());
   }
 }

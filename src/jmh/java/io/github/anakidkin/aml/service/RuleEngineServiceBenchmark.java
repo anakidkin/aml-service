@@ -8,6 +8,13 @@ import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.domain.TransactionStatus;
 import io.github.anakidkin.aml.rules.AmlRule;
 import io.github.anakidkin.aml.service.impl.RuleEngineServiceImpl;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -19,14 +26,6 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.All)
@@ -60,20 +59,26 @@ public class RuleEngineServiceBenchmark {
       double amount = 100.0 + (rnd.nextDouble() * 100000.0);
       boolean isP2p = rnd.nextBoolean();
 
-      this.transactions[i] = new Transaction(
-          UUID.randomUUID(), "ACC_" + i, "ACC_" + (i + 1),
-          new Money(BigDecimal.valueOf(amount), "USD"),
-          isP2p ? "6012" : "5411", isP2p, TransactionStatus.PENDING,
-          null, Instant.now(), Instant.now()
-      );
+      this.transactions[i] =
+          new Transaction(
+              UUID.randomUUID(),
+              "ACC_" + i,
+              "ACC_" + (i + 1),
+              new Money(BigDecimal.valueOf(amount), "USD"),
+              isP2p ? "6012" : "5411",
+              isP2p,
+              TransactionStatus.PENDING,
+              null,
+              Instant.now(),
+              Instant.now());
 
-      this.contexts[i] = new AccountContext(
-          amount * (0.5 + rnd.nextDouble()),
-          rnd.nextInt(50),
-          rnd.nextInt(20),
-          rnd.nextDouble(),
-          rnd.nextBoolean()
-      );
+      this.contexts[i] =
+          new AccountContext(
+              amount * (0.5 + rnd.nextDouble()),
+              rnd.nextInt(50),
+              rnd.nextInt(20),
+              rnd.nextDouble(),
+              rnd.nextBoolean());
     }
   }
 

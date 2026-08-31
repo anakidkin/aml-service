@@ -4,21 +4,19 @@ import io.github.anakidkin.aml.domain.Transaction;
 import io.github.anakidkin.aml.domain.TransactionStatus;
 import io.github.anakidkin.aml.dto.TransactionRequest;
 import io.github.anakidkin.aml.dto.TransactionResponse;
+import java.time.Instant;
+import java.util.UUID;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
-import java.time.Instant;
-import java.util.UUID;
-
 /**
- * MapStruct / Component mapper responsible for conversions between API DTOs
- * and domain model entities.
+ * MapStruct / Component mapper responsible for conversions between API DTOs and domain model
+ * entities.
  */
 @Mapper(
     componentModel = MappingConstants.ComponentModel.SPRING,
-    imports = {UUID.class, Instant.class, TransactionStatus.class}
-)
+    imports = {UUID.class, Instant.class, TransactionStatus.class})
 public interface TransactionApiMapper {
 
   @Mapping(target = "id", expression = "java(UUID.randomUUID())")
@@ -32,7 +30,13 @@ public interface TransactionApiMapper {
 
   @Mapping(target = "amount", source = "money.amount")
   @Mapping(target = "currency", source = "money.currency")
-  @Mapping(target = "riskLevel", expression = "java(transaction.riskAssessment() != null && transaction.riskAssessment().level() != null ? transaction.riskAssessment().level().name() : null)")
-  @Mapping(target = "riskScore", expression = "java(transaction.riskAssessment() != null ? transaction.riskAssessment().score() : null)")
+  @Mapping(
+      target = "riskLevel",
+      expression =
+          "java(transaction.riskAssessment() != null && transaction.riskAssessment().level() != null ? transaction.riskAssessment().level().name() : null)")
+  @Mapping(
+      target = "riskScore",
+      expression =
+          "java(transaction.riskAssessment() != null ? transaction.riskAssessment().score() : null)")
   TransactionResponse toResponse(Transaction transaction);
 }

@@ -8,8 +8,7 @@ public record RuleResult(
     RuleStatus status,
     String triggerReason,
     long executionTimeMs,
-    boolean isHard
-) {
+    boolean isHard) {
   public RuleResult {
     Objects.requireNonNull(ruleId, "ruleId cannot be null");
     Objects.requireNonNull(status, "status cannot be null");

@@ -12,6 +12,4 @@ public record InboundTransactionEvent(
     String currency,
     String mccCode,
     boolean isP2p,
-    Instant timestamp
-) {
-}
+    Instant timestamp) {}

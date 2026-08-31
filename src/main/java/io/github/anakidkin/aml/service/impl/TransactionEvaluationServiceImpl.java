@@ -13,6 +13,9 @@ import io.github.anakidkin.aml.service.OutboxService;
 import io.github.anakidkin.aml.service.RuleEngineService;
 import io.github.anakidkin.aml.service.TransactionEvaluationService;
 import io.micrometer.core.annotation.Timed;
+import java.time.Instant;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -20,10 +23,6 @@ import org.redisson.api.RedissonClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -38,13 +37,11 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
   private final RedissonClient redisson;
   private final AccountVolumeCache volumeCache;
 
-
   @Override
   @Timed(
       value = "aml.transaction.evaluation.latency",
       description = "Full synchronous pipeline evaluation latency",
-      percentiles = {0.50, 0.95, 0.99, 0.999}
-  )
+      percentiles = {0.50, 0.95, 0.99, 0.999})
   public Transaction evaluate(Transaction transaction) {
     log.info("Processing on thread: {}", Thread.currentThread());
     String lockKey = REDIS_LOCK_KET_PREFIX + transaction.accountFrom();
@@ -66,8 +63,11 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
 
       if (savedTransaction.status() != TransactionStatus.REJECTED) {
         try {
-          volumeCache.addTransaction(transaction.accountFrom(), transaction.accountTo(),
-              transaction.money().amount().doubleValue(), transaction.createdAt());
+          volumeCache.addTransaction(
+              transaction.accountFrom(),
+              transaction.accountTo(),
+              transaction.money().amount().doubleValue(),
+              transaction.createdAt());
         } catch (Exception e) {
           log.error("Failed to update volume cache for account {}", transaction.accountFrom(), e);
         }
@@ -86,15 +86,12 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
   }
 
   private Transaction processTransaction(Transaction transaction, List<RuleResult> ruleResults) {
-    boolean hasBlock = ruleResults.stream()
-        .anyMatch(r -> r.status() == RuleStatus.BLOCKED);
+    boolean hasBlock = ruleResults.stream().anyMatch(r -> r.status() == RuleStatus.BLOCKED);
 
-    boolean hasHardBlockRule = ruleResults.stream()
-        .anyMatch(r -> r.status() == RuleStatus.FLAGGED && r.isHard());
+    boolean hasHardBlockRule =
+        ruleResults.stream().anyMatch(r -> r.status() == RuleStatus.FLAGGED && r.isHard());
 
-    long flaggedCount = ruleResults.stream()
-        .filter(r -> r.status() == RuleStatus.FLAGGED)
-        .count();
+    long flaggedCount = ruleResults.stream().filter(r -> r.status() == RuleStatus.FLAGGED).count();
 
     TransactionStatus status;
     if (hasBlock) {
@@ -120,8 +117,7 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
         status,
         riskAssessment,
         transaction.createdAt(),
-        Instant.now()
-    );
+        Instant.now());
   }
 
   private RiskLevel calculateRiskLevel(boolean hasBlock, boolean hasHardBlock, long flaggedCount) {
@@ -137,9 +133,7 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
     return RiskLevel.LOW;
   }
 
-  /**
-   * Calculates the combined risk score for transaction
-   */
+  /** Calculates the combined risk score for transaction */
   private double calculateRiskScore(boolean hasBlock, boolean hasHardBlock, long flaggedCount) {
     if (hasBlock) {
       return 100.0;
@@ -149,5 +143,4 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
     }
     return Math.min(100.0, flaggedCount * 35.0);
   }
-
 }

@@ -6,17 +6,15 @@ import io.github.anakidkin.aml.domain.TransactionStatus;
 import io.github.anakidkin.aml.dto.InboundTransactionEvent;
 import io.github.anakidkin.aml.dto.TransactionEvaluatedEvent;
 import io.github.anakidkin.aml.entity.TransactionEntity;
+import java.time.Instant;
+import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
-import java.time.Instant;
-import java.util.List;
-
 @Mapper(
     componentModel = MappingConstants.ComponentModel.SPRING,
-    imports = {Instant.class, TransactionStatus.class}
-)
+    imports = {Instant.class, TransactionStatus.class})
 public interface TransactionDomainMapper {
 
   // Domain -> JPA Entity
@@ -40,5 +38,4 @@ public interface TransactionDomainMapper {
   @Mapping(target = "currency", source = "tx.money.currency")
   @Mapping(target = "evaluatedAt", expression = "java(Instant.now())")
   TransactionEvaluatedEvent toEvaluatedEvent(Transaction tx, List<RuleResult> ruleResults);
-
 }

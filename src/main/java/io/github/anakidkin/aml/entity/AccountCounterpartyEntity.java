@@ -1,5 +1,6 @@
 package io.github.anakidkin.aml.entity;
 
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -9,8 +10,6 @@ import org.springframework.data.cassandra.core.cql.PrimaryKeyType;
 import org.springframework.data.cassandra.core.mapping.Column;
 import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn;
 import org.springframework.data.cassandra.core.mapping.Table;
-
-import java.time.Instant;
 
 @Table(value = "account_counterparties", keyspace = "aml_ks")
 @Getter

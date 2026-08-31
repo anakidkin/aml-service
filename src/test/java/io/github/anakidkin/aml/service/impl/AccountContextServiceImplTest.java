@@ -1,24 +1,5 @@
 package io.github.anakidkin.aml.service.impl;
 
-import io.github.anakidkin.aml.cache.AccountVolumeCache;
-import io.github.anakidkin.aml.cache.Metrics24h;
-import io.github.anakidkin.aml.domain.AccountContext;
-import io.github.anakidkin.aml.domain.Money;
-import io.github.anakidkin.aml.domain.Transaction;
-import io.github.anakidkin.aml.domain.TransactionStatus;
-import io.github.anakidkin.aml.repository.CassandraHistoryRepository;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -26,20 +7,36 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.anakidkin.aml.cache.AccountVolumeCache;
+import io.github.anakidkin.aml.cache.Metrics24h;
+import io.github.anakidkin.aml.domain.AccountContext;
+import io.github.anakidkin.aml.domain.Money;
+import io.github.anakidkin.aml.domain.Transaction;
+import io.github.anakidkin.aml.domain.TransactionStatus;
+import io.github.anakidkin.aml.repository.CassandraHistoryRepository;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 @ExtendWith(MockitoExtension.class)
 class AccountContextServiceImplTest {
 
-  @Mock
-  private CassandraHistoryRepository cassandraHistoryRepository;
+  @Mock private CassandraHistoryRepository cassandraHistoryRepository;
 
-  @Mock
-  private AccountVolumeCache volumeCache;
+  @Mock private AccountVolumeCache volumeCache;
 
-  @InjectMocks
-  private AccountContextServiceImpl accountContextService;
+  @InjectMocks private AccountContextServiceImpl accountContextService;
 
   @Test
-  @DisplayName("Should correctly calculate all metrics when history exists and skip Cassandra 30d count query")
+  @DisplayName(
+      "Should correctly calculate all metrics when history exists and skip Cassandra 30d count query")
   void shouldBuildAccountContextCorrectly() {
     Instant txTime = Instant.parse("2026-03-01T10:00:00Z");
     Transaction tx = createTransaction("ACC_FROM", "ACC_TO", txTime);
@@ -47,12 +44,15 @@ class AccountContextServiceImplTest {
     Instant expected30dAgo = txTime.minus(30, ChronoUnit.DAYS);
 
     // Valkey/Redis metrics for 24h
-    when(volumeCache.get24hMetrics("ACC_FROM", txTime)).thenReturn(new Metrics24h(1500.0, 5L, true));
+    when(volumeCache.get24hMetrics("ACC_FROM", txTime))
+        .thenReturn(new Metrics24h(1500.0, 5L, true));
     when(volumeCache.getUniqueCounterparties24h("ACC_TO")).thenReturn(3);
 
     // Cassandra metrics for 30d
-    when(cassandraHistoryRepository.sumAmount("ACC_FROM", expected30dAgo, txTime)).thenReturn(new BigDecimal("1000.00"));
-    when(cassandraHistoryRepository.sumP2pAmount("ACC_FROM", expected30dAgo, txTime)).thenReturn(new BigDecimal("400.00"));
+    when(cassandraHistoryRepository.sumAmount("ACC_FROM", expected30dAgo, txTime))
+        .thenReturn(new BigDecimal("1000.00"));
+    when(cassandraHistoryRepository.sumP2pAmount("ACC_FROM", expected30dAgo, txTime))
+        .thenReturn(new BigDecimal("400.00"));
 
     AccountContext context = accountContextService.buildAccountContext(tx);
 
@@ -60,7 +60,7 @@ class AccountContextServiceImplTest {
     assertThat(context.txCount24h()).isEqualTo(5L);
     assertThat(context.uniqueCounterparties24h()).isEqualTo(3);
     assertThat(context.p2pRatio30d()).isEqualTo(0.4); // 400.00 / 1000.00
-    assertThat(context.isDormantAccount()).isFalse();  // txCount24h > 0 -> guarantees active account
+    assertThat(context.isDormantAccount()).isFalse(); // txCount24h > 0 -> guarantees active account
 
     // Short-circuit check: Cassandra tx count for 30d should NOT be called when txCount24h > 0
     verify(cassandraHistoryRepository, never()).countTransactionsInWindow(any(), any(), any());
@@ -76,7 +76,8 @@ class AccountContextServiceImplTest {
         .thenReturn(new Metrics24h(0.0, 0L, false));
     when(volumeCache.getUniqueCounterparties24h("ACC_TO")).thenReturn(0);
 
-    when(cassandraHistoryRepository.countTransactionsInWindow(eq("ACC_FROM"), any(), any())).thenReturn(0L);
+    when(cassandraHistoryRepository.countTransactionsInWindow(eq("ACC_FROM"), any(), any()))
+        .thenReturn(0L);
     when(cassandraHistoryRepository.sumAmount(any(), any(), any())).thenReturn(BigDecimal.ZERO);
 
     AccountContext context = accountContextService.buildAccountContext(tx);
@@ -117,7 +118,8 @@ class AccountContextServiceImplTest {
 
     when(volumeCache.get24hMetrics(any(), any())).thenReturn(new Metrics24h(100.0, 1L, true));
 
-    when(cassandraHistoryRepository.sumAmount(any(), any(), any())).thenReturn(new BigDecimal("500.00"));
+    when(cassandraHistoryRepository.sumAmount(any(), any(), any()))
+        .thenReturn(new BigDecimal("500.00"));
     when(cassandraHistoryRepository.sumP2pAmount(any(), any(), any())).thenReturn(null);
 
     AccountContext context = accountContextService.buildAccountContext(tx);
@@ -136,7 +138,6 @@ class AccountContextServiceImplTest {
         TransactionStatus.PENDING,
         null,
         createdAt,
-        createdAt
-    );
+        createdAt);
   }
 }

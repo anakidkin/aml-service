@@ -18,23 +18,23 @@ public class OutboxCleanerScheduler {
   @Transactional
   public void cleanupProcessedEvents() {
     // check debezium delay - compare with 10MB
-    Boolean isDebeziumCaughtUp = jdbcTemplate.queryForObject(
-        """
+    Boolean isDebeziumCaughtUp =
+        jdbcTemplate.queryForObject(
+            """
             SELECT (pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) < 10485760)
             FROM pg_replication_slots
             WHERE slot_name = 'debezium_slot'
             """,
-        Boolean.class
-    );
+            Boolean.class);
 
     if (Boolean.FALSE.equals(isDebeziumCaughtUp)) {
       log.warn("Debezium slot is laggy or inactive. Skipping outbox cleanup.");
       return;
     }
 
-    int deletedRows = jdbcTemplate.update(
-        "DELETE FROM outbox_events WHERE created_at < NOW() - INTERVAL '1 hour'"
-    );
+    int deletedRows =
+        jdbcTemplate.update(
+            "DELETE FROM outbox_events WHERE created_at < NOW() - INTERVAL '1 hour'");
 
     log.info("Successfully cleaned up {} processed outbox events", deletedRows);
   }

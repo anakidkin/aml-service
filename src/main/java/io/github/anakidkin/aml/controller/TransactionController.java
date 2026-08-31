@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller acting as a driving adapter for evaluating incoming transactions.
- * Exposes endpoints for real-time AML risk scoring and rule assessment.
+ * REST controller acting as a driving adapter for evaluating incoming transactions. Exposes
+ * endpoints for real-time AML risk scoring and rule assessment.
  */
 @RequiredArgsConstructor
 @RestController
@@ -24,7 +24,6 @@ public class TransactionController {
   private final TransactionEvaluationService transactionEvaluationService;
   private final TransactionApiMapper mapper;
 
-
   /**
    * Evaluates an incoming transaction against active AML rules and historical account context.
    *
@@ -32,7 +31,8 @@ public class TransactionController {
    * @return {@link TransactionResponse} containing the assigned status and risk evaluation details
    */
   @PostMapping("/evaluate")
-  public ResponseEntity<TransactionResponse> evaluateTransaction(@RequestBody TransactionRequest request) {
+  public ResponseEntity<TransactionResponse> evaluateTransaction(
+      @RequestBody TransactionRequest request) {
     Transaction domainTransaction = mapper.toDomain(request);
     Transaction evaluated = transactionEvaluationService.evaluate(domainTransaction);
     return ResponseEntity.ok(mapper.toResponse(evaluated));
