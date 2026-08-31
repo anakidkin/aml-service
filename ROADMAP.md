@@ -35,4 +35,4 @@ This document tracks planned technical enhancements, performance optimizations, 
 - [X] linters
 - [X] static code analysis
 - [ ] CI/CD
-- [ ] Dockerfile
+- [X] Dockerfile
