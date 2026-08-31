@@ -1,5 +1,10 @@
 # AML Service — High-Throughput Fraud & AML Detection Engine
 
+[![CI/CD Pipeline](https://github.com/anakidkin/aml-service/actions/workflows/ci.yml/badge.svg)](https://github.com/anakidkin/aml-service/actions/workflows/ci.yml)
+[![Docker Image](https://img.shields.io/badge/ghcr.io-aml--service-blue?logo=docker&logoColor=white)](https://github.com/anakidkin/aml-service/pkgs/container/aml-service)
+[![Java 25](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![Spring Boot 4](https://img.shields.io/badge/Spring%20Boot-4.x-brightgreen?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+
 Real-time Anti-Money Laundering (AML) & Fraud Detection engine designed for high-throughput banking systems. The service
 evaluates financial transactions against customizable compliance and risk rules within strict SLA targets.
 
