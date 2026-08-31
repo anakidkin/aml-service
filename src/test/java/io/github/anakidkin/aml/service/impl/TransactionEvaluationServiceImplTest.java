@@ -93,7 +93,7 @@ class TransactionEvaluationServiceImplTest {
     verify(accountContextService).buildAccountContext(tx);
     verify(ruleEngineService).evaluate(tx, mockContext);
     verify(outboxService).save(any(), eq(mockRuleResults));
-    verify(volumeCache).addAmount(tx.accountFrom(), tx.money().amount().doubleValue(), tx.createdAt());
+    verify(volumeCache).addTransaction(tx.accountFrom(), tx.accountTo(), tx.money().amount().doubleValue(), tx.createdAt());
     verify(lock).unlock();
   }
 
@@ -111,7 +111,7 @@ class TransactionEvaluationServiceImplTest {
     Transaction result = evaluationService.evaluate(tx);
 
     assertThat(result.status()).isEqualTo(TransactionStatus.REJECTED);
-    verify(volumeCache, never()).addAmount(anyString(), anyDouble(), any());
+    verify(volumeCache, never()).addTransaction(anyString(), anyString(), anyDouble(), any());
     verify(lock).unlock();
   }
 
@@ -156,7 +156,7 @@ class TransactionEvaluationServiceImplTest {
     when(accountContextService.buildAccountContext(tx)).thenReturn(createAccountContext());
     when(outboxService.save(any(), any())).thenReturn(approvedTx);
     doThrow(new RuntimeException("Redis down"))
-        .when(volumeCache).addAmount(anyString(), anyDouble(), any());
+        .when(volumeCache).addTransaction(anyString(), anyString(), anyDouble(), any());
 
     Transaction result = evaluationService.evaluate(tx);
 

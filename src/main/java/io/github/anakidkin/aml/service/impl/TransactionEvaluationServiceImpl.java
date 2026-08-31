@@ -66,7 +66,8 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
 
       if (savedTransaction.status() != TransactionStatus.REJECTED) {
         try {
-          volumeCache.addAmount(transaction.accountFrom(), transaction.money().amount().doubleValue(), transaction.createdAt());
+          volumeCache.addTransaction(transaction.accountFrom(), transaction.accountTo(),
+              transaction.money().amount().doubleValue(), transaction.createdAt());
         } catch (Exception e) {
           log.error("Failed to update volume cache for account {}", transaction.accountFrom(), e);
         }
