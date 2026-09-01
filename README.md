@@ -40,7 +40,9 @@ evaluates financial transactions against customizable compliance and risk rules 
 * **PostgreSQL** (Transaction storage & Transactional Outbox)
 * **Apache Cassandra** (NoSQL high-speed transaction history & aggregated account metrics)
 * **Apache Kafka (KRaft mode)** (High-throughput message streaming without ZooKeeper)
-* **Testcontainers & AssertJ** (Integration testing with real Cassandra, Postgres, and Kafka containers)
+* **Debezium** (CDC outbox event streaming)
+* **Redis / Valkey** (High-speed caching layer)
+* **Testcontainers & AssertJ** (Integration testing with real dependencies)
 
 ---
 
@@ -51,22 +53,49 @@ evaluates financial transactions against customizable compliance and risk rules 
 * Docker Engine 24+ & `docker compose` CLI plugin
 * Java 25+ JDK
 * Gradle 8.x (or Gradle Wrapper included)
+* `pre-commit` CLI (recommended for local contributors)
 
-### 1. Start Infrastructure Dependencies
+### 1. Code Quality & Pre-commit Hooks Setup
+
+The project enforces formatting (Spotless), secret scanning (Gitleaks), and syntax validation via Git pre-commit hooks.
+
+1. **Install `pre-commit` CLI on your system (one-time setup):**
+    * **macOS:** `brew install pre-commit gitleaks`
+    * **Linux:** `sudo apt install pre-commit` (or `pip install pre-commit`)
+    * **Windows:** `winget install pre-commit.pre-commit` (or `pip install pre-commit`)
+
+2. **Initialize hooks:**
+   Compiling the project via `./gradlew compileJava` will automatically bind the pre-commit hooks if the CLI is present
+   on your system.
+
+* **Run all quality checks manually:**
+  ```bash
+  pre-commit run --all-files
+
+```
+
+* **Emergency bypass (if needed):**
+```bash
+git commit -m "hotfix: urgent change" --no-verify
+
+```
+
+### 2. Start Infrastructure Dependencies
 
 ```bash
 docker compose up -d
 ```
 
-*This spins up PostgreSQL, Apache Cassandra, and Apache Kafka (KRaft).*
+*This spins up PostgreSQL, Apache Cassandra, Apache Kafka (KRaft), Debezium, and Valkey.*
 
-### 2. Build and Run Application
+### 3. Build and Run Application
 
 ```bash
 ./gradlew bootRun
+
 ```
 
-### 3. Run Test Suite
+### 4. Run Test Suite
 
 ```bash
 ./gradlew test
@@ -75,7 +104,7 @@ docker compose up -d
 ./gradlew gatlingRun
 ```
 
-### 4. Send Test Transaction for Evaluation
+### 5. Send Test Transaction for Evaluation
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/transactions \

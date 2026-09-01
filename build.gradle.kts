@@ -174,3 +174,21 @@ tasks.named<Test>("integrationTest") {
         showStackTraces = true
     }
 }
+
+tasks.register<Exec>("installPreCommit") {
+    group = "verification"
+    description = "Installs pre-commit git hooks if pre-commit CLI is available"
+
+    onlyIf {
+        file(".git").exists() && System.getenv("CI") == null
+    }
+
+    standardOutput = org.gradle.internal.io.NullOutputStream.INSTANCE
+    errorOutput = org.gradle.internal.io.NullOutputStream.INSTANCE
+
+    commandLine("sh", "-c", "command -v pre-commit >/dev/null 2>&1 && pre-commit install || true")
+}
+
+tasks.named("compileJava") {
+    dependsOn("installPreCommit")
+}
