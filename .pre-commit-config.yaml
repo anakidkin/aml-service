@@ -1,0 +1,30 @@
+default_stages: [pre-commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: spotless-check
+        name: Spotless Check (Java Formatting)
+        entry: ./gradlew spotlessCheck
+        language: system
+        files: \.(java|groovy|gradle)$
+        pass_filenames: false
+      - id: checkstyle
+        name: Checkstyle Analysis
+        entry: ./gradlew checkstyleMain checkstyleTest
+        language: system
+        files: \.(java)$
+        pass_filenames: false
