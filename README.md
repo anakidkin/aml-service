@@ -18,8 +18,67 @@ evaluates financial transactions against customizable compliance and risk rules 
   Apache Cassandra).
 * **Availability & Resilience:** Zero data-loss architecture (**At-Least-Once** event delivery via Outbox Pattern &
   Kafka).
+* Long-Term Audit Retention (Compliance): 7-year immutable historical audit storage.
 
 ---
+
+```mermaid
+flowchart TD
+subgraph Ingress [Ingress Layer]
+ClientREST([💳 Payment Gateway / REST])
+KafkaIngress{{📥 External Kafka Topic}}
+end
+
+subgraph EngineService ["AML Engine API (Stateless & Fast SLA less than 100ms)"]
+AppEngine[⚡ AML Engine API]
+
+AppEngine <-->|3. Acquire Lock & Sync Incr Hot Counters| Redis[(🔴 Redis Cluster\nDistributed Lock & Hot State)]
+AppEngine <-->|4. Fetch Historical Profile| Cassandra[(⚡ Apache Cassandra\nWarm Aggregates)]
+AppEngine -->|5. Evaluate Rules & Save Tx + Outbox| Postgres[(🐘 PostgreSQL\nHot Tier: Purge 30d)]
+end
+
+ClientREST -->|1. REST Request| AppEngine
+KafkaIngress -->|2. Consume Event| AppEngine
+AppEngine -->|6. Sync Decision Response| ClientREST
+
+subgraph CDC_Pipeline [CDC & Event Bus]
+Postgres -->|7. WAL Capture| Debezium[🔌 Debezium CDC]
+Debezium -->|8. Publish Verdict Events| KafkaInternal{{🚀 Apache Kafka KRaft}}
+end
+
+subgraph WorkerService [AML Aggregator Worker]
+KafkaInternal -->|9. Consume Internal Events| AppWorker[⚙️ AML Worker Service]
+AppWorker -->|10. Async Update Historical Aggregates| Cassandra
+end
+
+subgraph ColdArchive [Long-Term Audit Tier]
+KafkaInternal -->|11. S3 Sink Connector & Lifecycle| Glacier[🧊 AWS S3 Glacier Deep Archive\n7-Year Compliance]
+end
+
+classDef primary fill:#2563eb,stroke:#1e40af,color:#fff
+classDef worker fill:#4f46e5,stroke:#3730a3,color:#fff
+classDef storage fill:#059669,stroke:#047857,color:#fff
+classDef redis fill:#dc2626,stroke:#991b1b,color:#fff
+classDef coldStorage fill:#0284c7,stroke:#0369a1,color:#fff
+classDef kafka fill:#d97706,stroke:#b45309,color:#fff
+
+class AppEngine primary
+class AppWorker worker
+class Postgres,Cassandra storage
+class Redis redis
+class KafkaIngress,KafkaInternal kafka
+class Glacier coldStorage
+```
+
+### Data Retention & Storage Tiers
+
+To support 10k TPS while keeping operational storage lightweight and meeting strict SLA targets:
+
+* **PostgreSQL (Hot Data):** Retains primary transactions & outbox logs for **30 days** before automated purging.
+* **Apache Cassandra (Warm Metrics):** Stores 24h / 30d rolling aggregates using native **TTL (30-90 days)** for instant
+  SLA-compliant risk evaluation.
+* **AWS S3 & Glacier (Cold Storage / Audit):** Kafka streams immutable events to **S3**, automatically transitioning to
+  **Glacier Deep Archive** after 30 days for cost-effective **7-year regulatory compliance**.
 
 ## Latency Budget Breakdown (< 100 ms)
 
@@ -40,6 +99,7 @@ evaluates financial transactions against customizable compliance and risk rules 
 * **PostgreSQL** (Transaction storage & Transactional Outbox)
 * **Apache Cassandra** (NoSQL high-speed transaction history & aggregated account metrics)
 * **Apache Kafka (KRaft mode)** (High-throughput message streaming without ZooKeeper)
+* **AWS S3 / S3 Glacier** (Cost-effective 7-year audit retention pipeline via lifecycle policies)
 * **Debezium** (CDC outbox event streaming)
 * **Redis / Valkey** (High-speed caching layer)
 * **Testcontainers & AssertJ** (Integration testing with real dependencies)

@@ -2,6 +2,22 @@
 
 This document tracks planned technical enhancements, performance optimizations, and infrastructure tasks.
 
+### Architecture & Service Separation
+
+- [ ] **Service Split (Engine vs Worker):** Split the monolith into `aml-engine` (hot REST/Kafka API with < 100ms SLA)
+  and `aml-worker` (async CDC consumer for Cassandra).
+- [ ] **Gradle Multi-Module Setup:** Restructure project into `aml-common`, `aml-engine`, and `aml-worker` modules.
+
+---
+
+### Compliance & Data Lifecycle
+
+- [ ] **LocalStack (AWS S3 Integration):** Add LocalStack to `docker-compose.yml` for local S3 emulation.
+- [ ] **Kafka S3 Sink & Glacier Policy:** Stream Kafka events to S3 with a 30-day lifecycle rule to transition data to
+  S3 Glacier for 7-year regulatory retention.
+
+---
+
 ### Integration Testing & Race Conditions
 
 - [X] **Async History Race Condition Test:** Write a test simulating rapid consecutive transactions (e.g., 2
@@ -18,17 +34,19 @@ This document tracks planned technical enhancements, performance optimizations, 
 - [ ] **Gatling Load SLA Tuning:** Optimize the processing pipeline to pass Gatling SLA checks.
 - [X] **Kafka Listener Load Tests & Metrics:** Add performance tests and SLA metrics for the existing Kafka listener.
   Currently, Gatling only benchmarks the REST endpoint, leaving the asynchronous Kafka processing pipeline unmeasured.
-- [X] Switch to the Virtual Threads
+- [X] **Switch to Virtual Threads:** Spring Boot & Kafka listeners configured to run on Virtual Threads.
 - [ ] **GC & Allocation Profiling:** Address high object allocation rates identified in JMH benchmarks.
-- [X] **Redis / Valkey Integration:** Utilize the provisioned Redis/Valkey container and dependencies to cache
-  frequently accessed data.
-- [X] Adopt Debezium CDC for Outbox Pattern
+- [X] **Redis / Valkey Integration & Distributed Locking:** Utilize Redis for caching, hot counters, and distributed locking to
+  prevent race conditions.
+- [X] **Adopt Debezium CDC for Outbox Pattern**
 
 ---
 
 ### Resilience & Fault Tolerance
 
 - [ ] **Resilience4j Integration:** Implement resilience patterns across external integration points and data layers
+
+---
 
 ### Developer Experience
 
