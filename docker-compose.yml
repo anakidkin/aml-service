@@ -8,6 +8,8 @@ services:
     command: valkey-server --requirepass secretpass
     ports:
       - "6379:6379"
+    networks:
+      - aml-net
     healthcheck:
       test: [ "CMD", "valkey-cli", "-a", "secretpass", "ping" ]
       interval: 5s
@@ -29,6 +31,8 @@ services:
       - postgres_data:/var/lib/postgresql
     ports:
       - "5432:5432"
+    networks:
+      - aml-net
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U aml_user -d aml_db" ]
       interval: 5s
@@ -40,6 +44,8 @@ services:
     container_name: aml-debezium
     ports:
       - "8083:8083"
+    networks:
+      - aml-net
     environment:
       BOOTSTRAP_SERVERS: kafka:29092
       GROUP_ID: 1
@@ -62,7 +68,9 @@ services:
     container_name: aml-debezium-init
     depends_on:
       - debezium
-    entrypoint: ["/bin/sh", "-c"]
+    networks:
+      - aml-net
+    entrypoint: [ "/bin/sh", "-c" ]
     command:
       - |
         echo "Waiting for Kafka Connect to start..."
@@ -110,17 +118,16 @@ services:
     environment:
       - CASSANDRA_CLUSTER_NAME=AMLCluster
       - CASSANDRA_DC=datacenter1
-      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_ENDPOINT_SNITCH=SimpleSnitch
       - MAX_HEAP_SIZE=1G
       - HEAP_NEWSIZE=256M
     volumes:
       - cassandra_data:/var/lib/cassandra
     networks:
-      aml-net:
-        ipv4_address: 172.18.0.10
+      - aml-net
     healthcheck:
       test: [ "CMD-SHELL", "cqlsh -e 'describe cluster' || exit 1" ]
-      start_period: 30s
+      start_period: 45s
       interval: 10s
       timeout: 10s
       retries: 10
@@ -155,6 +162,8 @@ services:
     container_name: aml-kafka
     ports:
       - "9092:9092"
+    networks:
+      - aml-net
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
@@ -171,7 +180,7 @@ services:
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
     healthcheck:
-      test: [ "CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "kafka:9092" ]
+      test: [ "CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -198,10 +207,88 @@ services:
     container_name: aml-localstack
     ports:
       - "4566:4566"
+    networks:
+      - aml-net
     environment:
       - SERVICES=s3
-      - DEFAULT_REGION=eu-central-1
       - AWS_DEFAULT_REGION=eu-central-1
+    volumes:
+      - ./infra/s3/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh
+
+  kafka-connect-s3:
+    image: confluentinc/cp-kafka-connect:8.0.7
+    container_name: aml-kafka-connect-s3
+    depends_on:
+      kafka:
+        condition: service_healthy
+      localstack:
+        condition: service_started
+    ports:
+      - "8084:8083"
+    networks:
+      - aml-net
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: "kafka:29092"
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: "connect-s3-group"
+      CONNECT_CONFIG_STORAGE_TOPIC: "connect-s3-configs"
+      CONNECT_OFFSET_STORAGE_TOPIC: "connect-s3-offsets"
+      CONNECT_STATUS_STORAGE_TOPIC: "connect-s3-status"
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "1"
+      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect-s3"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      AWS_ACCESS_KEY_ID: "test"
+      AWS_SECRET_ACCESS_KEY: "test"
+    command:
+      - bash
+      - -c
+      - |
+        echo "Installing Confluent S3 Sink Connector..."
+        confluent-hub install --no-prompt confluentinc/kafka-connect-s3:12.1.0
+        echo "Starting Kafka Connect worker..."
+        /etc/confluent/docker/run
+
+  kafka-connect-s3-init:
+    image: curlimages/curl:8.21.0
+    container_name: aml-kafka-connect-s3-init
+    depends_on:
+      - kafka-connect-s3
+    networks:
+      - aml-net
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - |
+        echo "Waiting for Kafka Connect S3 REST API..."
+        while [ $$(curl -s -o /dev/null -w "%{http_code}" http://kafka-connect-s3:8083/connectors) -ne 200 ]; do
+          sleep 3
+        done
+        echo "Kafka Connect is UP. Registering S3 Sink Connector..."
+        curl -X POST http://kafka-connect-s3:8083/connectors \
+          -H "Content-Type: application/json" \
+          -d '{
+            "name": "s3-sink-aml-audit",
+            "config": {
+              "connector.class": "io.confluent.connect.s3.S3SinkConnector",
+              "tasks.max": "1",
+              "topics": "aml.transaction-evaluated.v1",
+              "s3.region": "eu-central-1",
+              "s3.bucket.name": "aml-audit-logs",
+              "s3.part.size": "5242880",
+              "flush.size": "1000",
+              "rotate.interval.ms": "10000",
+              "store.url": "http://localstack:4566",
+              "s3.wan.of.path.style": "true",
+              "storage.class": "io.confluent.connect.s3.storage.S3Storage",
+              "format.class": "io.confluent.connect.s3.format.json.JsonFormat",
+              "schema.compatibility": "NONE"
+            }
+          }'
+        echo "S3 Sink Connector registered successfully!"
 
   # ---------------------------------------------------------------------------
   # Prometheus & Grafana (Observability & SLA Tracking)
@@ -211,6 +298,8 @@ services:
     container_name: aml-prometheus
     ports:
       - "9090:9090"
+    networks:
+      - aml-net
     volumes:
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
 
@@ -219,6 +308,8 @@ services:
     container_name: aml-grafana
     ports:
       - "3000:3000"
+    networks:
+      - aml-net
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
@@ -232,6 +323,3 @@ volumes:
 networks:
   aml-net:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.18.0.0/16

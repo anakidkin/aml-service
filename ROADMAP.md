@@ -12,8 +12,8 @@ This document tracks planned technical enhancements, performance optimizations, 
 
 ### Compliance & Data Lifecycle
 
-- [ ] **LocalStack (AWS S3 Integration):** Add LocalStack to `docker-compose.yml` for local S3 emulation.
-- [ ] **Kafka S3 Sink & Glacier Policy:** Stream Kafka events to S3 with a 30-day lifecycle rule to transition data to
+- [X] **LocalStack (AWS S3 Integration):** Add LocalStack to `docker-compose.yml` for local S3 emulation.
+- [X] **Kafka S3 Sink & Glacier Policy:** Stream Kafka events to S3 with a 30-day lifecycle rule to transition data to
   S3 Glacier for 7-year regulatory retention.
 
 ---
