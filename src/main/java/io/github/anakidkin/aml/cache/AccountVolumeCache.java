@@ -1,6 +1,7 @@
 package io.github.anakidkin.aml.cache;
 
 import io.github.anakidkin.aml.repository.CassandraHistoryRepository;
+import io.micrometer.core.annotation.Timed;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -56,6 +57,10 @@ public class AccountVolumeCache {
   }
 
   /** Adds an approved transaction to the Redis sliding window. */
+  @Timed(
+      value = "aml.cache.save.latency",
+      description = "Cache saving latency",
+      percentiles = {0.50, 0.95, 0.99, 0.999})
   public void addTransaction(String accountFrom, String accountTo, double amount, Instant txTime) {
     log.debug("Adding amount {} to cache for account {}", amount, accountFrom);
 

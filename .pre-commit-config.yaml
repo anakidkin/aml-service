@@ -18,13 +18,13 @@ repos:
     hooks:
       - id: spotless-check
         name: Spotless Check (Java Formatting)
-        entry: ./gradlew spotlessCheck
+        entry: bash ./gradlew spotlessCheck
         language: system
         files: \.(java|groovy|gradle)$
         pass_filenames: false
       - id: checkstyle
         name: Checkstyle Analysis
-        entry: ./gradlew checkstyleMain checkstyleTest
+        entry: bash ./gradlew checkstyleMain checkstyleTest
         language: system
         files: \.(java)$
         pass_filenames: false

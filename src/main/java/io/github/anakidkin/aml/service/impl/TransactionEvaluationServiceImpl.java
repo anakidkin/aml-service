@@ -40,7 +40,7 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
   @Override
   @Timed(
       value = "aml.transaction.evaluation.latency",
-      description = "Full synchronous pipeline evaluation latency",
+      description = "Transaction processing latency",
       percentiles = {0.50, 0.95, 0.99, 0.999})
   public Transaction evaluate(Transaction transaction) {
     log.info("Processing on thread: {}", Thread.currentThread());
@@ -49,7 +49,7 @@ public class TransactionEvaluationServiceImpl implements TransactionEvaluationSe
     boolean acquired = false;
 
     try {
-      acquired = lock.tryLock(3, 2, TimeUnit.SECONDS);
+      acquired = lock.tryLock(3, TimeUnit.SECONDS);
       if (!acquired) {
         throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Account lock timeout");
       }

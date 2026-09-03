@@ -60,7 +60,7 @@ class TransactionEvaluationServiceImplTest {
   }
 
   private void mockSuccessfulLock() throws InterruptedException {
-    when(lock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
+    when(lock.tryLock(anyLong(), any(TimeUnit.class))).thenReturn(true);
     when(lock.isHeldByCurrentThread()).thenReturn(true);
   }
 
@@ -114,7 +114,7 @@ class TransactionEvaluationServiceImplTest {
   @DisplayName("Should throw ResponseStatusException and not proceed when Redis lock fails")
   void shouldThrowExceptionWhenLockAcquisitionFails() throws InterruptedException {
     Transaction tx = createTransaction(TransactionStatus.PENDING);
-    when(lock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(false);
+    when(lock.tryLock(anyLong(), any(TimeUnit.class))).thenReturn(false);
 
     assertThatThrownBy(() -> evaluationService.evaluate(tx))
         .isInstanceOf(ResponseStatusException.class)

@@ -10,6 +10,7 @@ import io.github.anakidkin.aml.mapper.TransactionDomainMapper;
 import io.github.anakidkin.aml.repository.JpaOutboxRepository;
 import io.github.anakidkin.aml.repository.JpaTransactionRepository;
 import io.github.anakidkin.aml.service.OutboxService;
+import io.micrometer.core.annotation.Timed;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,10 @@ public class OutboxServiceImpl implements OutboxService {
 
   @Override
   @Transactional
+  @Timed(
+      value = "aml.outbox.save.latency",
+      description = "Outbox saving latency",
+      percentiles = {0.50, 0.95, 0.99, 0.999})
   public Transaction save(Transaction transaction, List<RuleResult> ruleResults) {
     TransactionEntity entity = transactionDomainMapper.toEntity(transaction);
     jpaTransactionRepository.save(entity);
