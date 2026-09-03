@@ -1,5 +1,6 @@
 package io.github.anakidkin.aml.scheduler;
 
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,14 +19,21 @@ public class OutboxCleanerScheduler {
   @Transactional
   public void cleanupProcessedEvents() {
     // check debezium delay - compare with 10MB
-    Boolean isDebeziumCaughtUp =
-        jdbcTemplate.queryForObject(
+    List<Boolean> results =
+        jdbcTemplate.query(
             """
             SELECT (pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) < 10485760)
             FROM pg_replication_slots
             WHERE slot_name = 'debezium_slot'
             """,
-            Boolean.class);
+            (rs, _) -> rs.getBoolean(1));
+
+    if (results.isEmpty()) {
+      log.warn("Replication slot 'debezium_slot' not found. Skipping outbox cleanup.");
+      return;
+    }
+
+    Boolean isDebeziumCaughtUp = results.getFirst();
 
     if (Boolean.FALSE.equals(isDebeziumCaughtUp)) {
       log.warn("Debezium slot is laggy or inactive. Skipping outbox cleanup.");

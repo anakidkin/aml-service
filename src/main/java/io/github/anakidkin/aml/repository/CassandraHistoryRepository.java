@@ -1,8 +1,10 @@
 package io.github.anakidkin.aml.repository;
 
+import io.github.anakidkin.aml.dto.AccountStatsProjection;
 import io.github.anakidkin.aml.entity.AccountTransactionHistoryEntity;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import org.springframework.data.cassandra.repository.CassandraRepository;
 import org.springframework.data.cassandra.repository.Query;
@@ -25,8 +27,11 @@ public interface CassandraHistoryRepository
   BigDecimal sumAmount(String accountFrom, Instant from, Instant to);
 
   @Query(
-      "SELECT SUM(amount) "
+      "SELECT is_p2p AS isP2p, COUNT(1) AS txCount, SUM(amount) AS totalAmount "
           + "FROM aml_ks.account_transaction_history "
-          + "WHERE account_from = ?0 AND is_p2p = true AND created_at >= ?1 AND created_at <= ?2")
-  BigDecimal sumP2pAmount(String accountFrom, Instant from, Instant to);
+          + "WHERE account_from = ?0 "
+          + "  AND is_p2p IN (true, false) "
+          + "  AND created_at >= ?1 AND created_at <= ?2 "
+          + "GROUP BY is_p2p")
+  List<AccountStatsProjection> fetchGroupedStats(String accountFrom, Instant from, Instant to);
 }
